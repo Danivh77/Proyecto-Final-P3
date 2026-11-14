@@ -5,7 +5,7 @@ defmodule Emergencias.CLI.Dispatcher do
   """
 
   alias Emergencias.CLI.{Parser, Permisos}
-  alias Emergencias.Servidores.{ActividadLogger, UsuarioServer}
+  alias Emergencias.Servidores.{ActividadLogger, Sesion, SesionSupervisor, UsuarioServer}
 
   @comandos_publicos [:connect, :help, :exit]
 
@@ -18,9 +18,11 @@ defmodule Emergencias.CLI.Dispatcher do
     end
   end
 
-    defp con_permiso({comando, args} = cmd, sesion) do
+  defp con_permiso({comando, args} = cmd, sesion) do
     if Permisos.puede?(sesion.tipo, comando) do
-      ActividadLogger.registrar(sesion.usuario, Enum.join([comando | args], " "))
+      linea = Enum.join([comando | args], " ")
+      ActividadLogger.registrar(sesion.usuario, linea)
+      Sesion.registrar_comando(sesion.usuario, linea)
       ejecutar(cmd, sesion)
     else
       {{:error, :sin_permiso}, sesion}
@@ -33,13 +35,14 @@ defmodule Emergencias.CLI.Dispatcher do
 
     case UsuarioServer.connect(usuario, contrasena, tipo, zona) do
       {:ok, u, accion} ->
+        nueva_sesion = %{usuario: u.username, tipo: u.tipo, zona: u.zona}
+        SesionSupervisor.iniciar_sesion(nueva_sesion)
         ActividadLogger.registrar(u.username, "connect")
 
         mensaje =
           if accion == :registrado, do: "Usuario registrado y conectado", else: "Conectado"
 
-        {{:ok, "#{mensaje}: #{u.username} (#{u.tipo}, zona #{u.zona})."},
-         %{usuario: u.username, tipo: u.tipo, zona: u.zona}}
+        {{:ok, "#{mensaje}: #{u.username} (#{u.tipo}, zona #{u.zona})."}, nueva_sesion}
 
       error ->
         {error, nil}
@@ -53,7 +56,7 @@ defmodule Emergencias.CLI.Dispatcher do
     do: {{:error, {:uso, "connect usuario contraseña [tipo] [zona]"}}, sesion}
 
   defp ejecutar({:disconnect, []}, sesion) do
-    UsuarioServer.disconnect(sesion.usuario)
+    cerrar(sesion)
     {{:ok, "Sesión de #{sesion.usuario} cerrada."}, nil}
   end
 
@@ -81,7 +84,7 @@ defmodule Emergencias.CLI.Dispatcher do
   defp ejecutar({:exit, []}, nil), do: {:salir, nil}
 
   defp ejecutar({:exit, []}, sesion) do
-    UsuarioServer.disconnect(sesion.usuario)
+    cerrar(sesion)
     {:salir, nil}
   end
 
@@ -96,4 +99,9 @@ defmodule Emergencias.CLI.Dispatcher do
   # Debe ir de última.
   defp ejecutar({comando, _args}, sesion),
     do: {{:error, {:comando_no_implementado, comando}}, sesion}
+
+  defp cerrar(sesion) do
+    UsuarioServer.disconnect(sesion.usuario)
+    SesionSupervisor.cerrar_sesion(sesion.usuario)
+  end
 end
