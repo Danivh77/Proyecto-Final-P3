@@ -16,7 +16,7 @@ defmodule Emergencias.Application do
       {Registry, keys: :unique, name: Emergencias.Registry},
       Emergencias.Servidores.ActividadLogger,
       Emergencias.Servidores.UsuarioServer,
-      # Emergencias.Servidores.SesionSupervisor,
+      Emergencias.Servidores.SesionSupervisor,
       # Emergencias.Servidores.ZonaServer,
       # Emergencias.Servidores.InventarioServer,
       # Emergencias.Servidores.NecesidadServer,
