@@ -21,10 +21,15 @@ defmodule Emergencias.DatosPrueba do
     }
   end
 
-  @doc "Borra y vuelve a crear la carpeta de datos de prueba, para empezar cada prueba limpia."
+  @doc "Deja vacía la carpeta de datos de prueba, sin borrar la carpeta."
   def limpiar_datos do
-    File.rm_rf!(@carpeta_pruebas)
-    File.mkdir_p!(@carpeta_pruebas)
+    File.mkdir_p(@carpeta_pruebas)
+
+    case File.ls(@carpeta_pruebas) do
+      {:ok, nombres} -> Enum.each(nombres, &File.rm_rf(Path.join(@carpeta_pruebas, &1)))
+      {:error, _} -> :ok
+    end
+
     :ok
   end
 
@@ -48,5 +53,5 @@ defmodule Emergencias.DatosPrueba do
   # def albergue_ejemplo(capacidad \\ 150) do
   #   %{codigo: "A01", nombre: "Albergue Norte", zona: "zona_norte", capacidad: capacidad}
   # end
- 
+
 end
