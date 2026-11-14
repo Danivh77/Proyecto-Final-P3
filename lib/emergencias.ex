@@ -1,18 +1,10 @@
 defmodule Emergencias do
   @moduledoc """
-  Documentation for `Emergencias`.
+  Sistema Distribuido de Coordinación y Gestión de Emergencias.
+
+  Para usarlo: `iex -S mix` y luego `Emergencias.iniciar()`.
   """
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Emergencias.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
+  @doc "Inicia la consola de comandos."
+  def iniciar, do: Emergencias.CLI.iniciar()
 end
