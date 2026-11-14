@@ -14,8 +14,8 @@ defmodule Emergencias.Application do
     # Cada una quita el # de su línea cuando su módulo exista.
     children = [
       {Registry, keys: :unique, name: Emergencias.Registry},
-      Emergencias.Servidores.ActividadLogger
-      # Emergencias.Servidores.UsuarioServer,
+      Emergencias.Servidores.ActividadLogger,
+      Emergencias.Servidores.UsuarioServer,
       # Emergencias.Servidores.SesionSupervisor,
       # Emergencias.Servidores.ZonaServer,
       # Emergencias.Servidores.InventarioServer,
