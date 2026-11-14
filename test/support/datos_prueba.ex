@@ -13,9 +13,9 @@ defmodule Emergencias.DatosPrueba do
   @doc "Usuario de ejemplo. Se le puede cambiar el tipo: ciudadano, voluntario, coordinador o administrador."
   def usuario_ejemplo(tipo \\ "coordinador") do
     %{
-      username: "Valen",
+      username: "laura",
       password: "1234",
-      nombre: "Valentina Gómez",
+      nombre: "Laura Gómez",
       tipo: tipo,
       zona: "centro"
     }
