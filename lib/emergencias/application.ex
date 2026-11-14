@@ -1,19 +1,30 @@
 defmodule Emergencias.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
-  @moduledoc false
+  @moduledoc """
+  Arranca el sistema: prepara los datos y levanta el árbol de supervisión.
+  """
 
   use Application
 
+  alias Emergencias.Persistencia
+
   @impl true
   def start(_type, _args) do
+    Persistencia.cargar_datos_iniciales()
+
+    # Cada una quita el # de su línea cuando su módulo exista.
     children = [
-      # Starts a worker by calling: Emergencias.Worker.start_link(arg)
-      # {Emergencias.Worker, arg}
+      {Registry, keys: :unique, name: Emergencias.Registry},
+      Emergencias.Servidores.ActividadLogger
+      # Emergencias.Servidores.UsuarioServer,
+      # Emergencias.Servidores.SesionSupervisor,
+      # Emergencias.Servidores.ZonaServer,
+      # Emergencias.Servidores.InventarioServer,
+      # Emergencias.Servidores.NecesidadServer,
+      # Emergencias.Servidores.FamiliaServer,
+      # Emergencias.Servidores.MascotaServer,
+      # Emergencias.Servidores.AlbergueSupervisor
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Emergencias.Supervisor]
     Supervisor.start_link(children, opts)
   end
