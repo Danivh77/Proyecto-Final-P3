@@ -1,0 +1,2 @@
+MSG001|2026-11-14 10:30:00|ana.gomez|1001234567|Andrés, estamos buscándote. Escríbenos cuando puedas.|pendiente
+MSG002|2026-11-14 11:15:00|pedro.perez|1003456789|Papá, estamos bien en casa de la tía \p te esperamos allá.|entregado
