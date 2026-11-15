@@ -57,6 +57,15 @@ defmodule Emergencias.CLI.Formatter do
 
   def mensaje_error(:transicion_invalida), do: "ese cambio de estado no está permitido."
   def mensaje_error(:inventario_insuficiente), do: "no hay suficiente inventario."
+  def mensaje_error(:ubicacion_requerida), do: "indica la ubicación de este recurso."
+
+  def mensaje_error(:destino_invalido),
+    do: "el destino debe ser distinto del origen y no estar vacío."
+
+  def mensaje_error(:cantidad_invalida), do: "cantidad fuera del rango permitido."
+  def mensaje_error(:categoria_invalida), do: "la categoría no puede estar vacía."
+  def mensaje_error(:unidad_invalida), do: "la unidad no puede estar vacía."
+  def mensaje_error(:ubicacion_invalida), do: "la ubicación no puede estar vacía."
   def mensaje_error(:capacidad_llena), do: "el albergue no tiene cupos disponibles."
   def mensaje_error(:ya_resuelto), do: "el reporte ya fue resuelto."
   def mensaje_error(:contrasena_incorrecta), do: "contraseña incorrecta."
