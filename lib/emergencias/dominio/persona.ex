@@ -4,6 +4,8 @@ defmodule Emergencias.Dominio.Persona do
 
   """
 
+  alias Emergencias.Persistencia
+
   defstruct [:id, :documento, :nombre, :edad, :zona, :estado, historial: []]
 
   @type estado ::
@@ -21,7 +23,7 @@ defmodule Emergencias.Dominio.Persona do
 
   @estados [:sin_informacion, :reportada, :localizada, :trasladada, :en_albergue, :reunificada]
 
-  # Transiciones permitidas.
+  # Transiciones permitidas. `:reunificada` es un estado final.
   @transiciones %{
     sin_informacion: [:reportada, :localizada, :trasladada, :en_albergue],
     reportada: [:sin_informacion, :localizada, :trasladada, :en_albergue, :reunificada],
@@ -63,7 +65,8 @@ defmodule Emergencias.Dominio.Persona do
 
 
   @doc """
-  Crea una persona.
+  Crea una persona. La edad puede ser `nil` (desconocida). El estado inicial por defecto
+  es `:reportada`; también puede indicarse (átomo o texto).
   """
   @spec nuevo(term(), term(), term(), term(), term(), term()) :: {:ok, t()} | {:error, atom()}
   def nuevo(id, documento, nombre, edad, zona, estado \\ :reportada) do
@@ -100,6 +103,8 @@ defmodule Emergencias.Dominio.Persona do
   @doc """
   Cambia el estado de la persona y registra `{fecha, estado_anterior, estado_nuevo}`
   al final del historial.
+
+  Errores: `:estado_invalido`, `:fecha_invalida`, `:transicion_invalida`.
   """
   @spec transicion(t(), term(), term()) :: {:ok, t()} | {:error, atom()}
   def transicion(%__MODULE__{} = persona, nuevo_estado, fecha) do
@@ -110,7 +115,6 @@ defmodule Emergencias.Dominio.Persona do
       {:ok, %{persona | estado: destino, historial: persona.historial ++ [registro]}}
     end
   end
-
 
   @doc """
   Recorre recursivamente la lista y devuelve las personas que cumplen TODOS los filtros.
@@ -135,14 +139,14 @@ defmodule Emergencias.Dominio.Persona do
   def a_linea(%__MODULE__{} = p) do
     historial = Enum.map_join(p.historial, ";", fn {fecha, de, a} -> "#{fecha}>#{de}>#{a}" end)
 
-    Enum.join([p.id, p.documento, p.nombre, p.edad, p.zona, p.estado, historial], "|")
+    Persistencia.unir_campos([p.id, p.documento, p.nombre, p.edad, p.zona, p.estado, historial])
   end
 
-  @doc "Reconstruye una persona desde una línea."
+  @doc "Reconstruye una persona desde una línea. Devuelve `{:error, :linea_invalida}` si está dañada."
   @spec desde_linea(String.t()) :: {:ok, t()} | {:error, :linea_invalida}
   def desde_linea(linea) when is_binary(linea) do
     with [id, documento, nombre, edad, zona, estado, historial] <-
-           linea |> String.trim() |> String.split("|"),
+           linea |> String.trim() |> Persistencia.separar_campos(),
          {:ok, edad} <- leer_edad(edad),
          {:ok, persona} <- nuevo(id, documento, nombre, edad, zona, estado),
          {:ok, historial} <- leer_historial(historial) do
@@ -153,7 +157,6 @@ defmodule Emergencias.Dominio.Persona do
   end
 
   def desde_linea(_), do: {:error, :linea_invalida}
-
 
   defp validar_transicion(estado_actual, destino) do
     if destino in Map.get(@transiciones, estado_actual, []) do
@@ -225,7 +228,8 @@ defmodule Emergencias.Dominio.Persona do
   defp limpiar(valor) when is_binary(valor), do: String.trim(valor)
   defp limpiar(_), do: nil
 
-  defp texto_valido?(valor) when is_binary(valor), do: Regex.match?(~r/^[^|\r\n]+$/, valor)
+  # Texto libre: no vacío y sin saltos de línea (el `|` se escapa al guardar).
+  defp texto_valido?(valor) when is_binary(valor), do: Regex.match?(~r/^[^\r\n]+$/, valor)
   defp texto_valido?(_), do: false
 
   defp documento_valido?(valor) when is_binary(valor), do: Regex.match?(~r/^[^|,;>\r\n]+$/, valor)

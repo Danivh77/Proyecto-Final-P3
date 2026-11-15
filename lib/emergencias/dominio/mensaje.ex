@@ -4,6 +4,8 @@ defmodule Emergencias.Dominio.Mensaje do
 
   """
 
+  alias Emergencias.Persistencia
+
   defstruct [:id, :fecha, :remitente, :destinatario, :contenido, estado: :pendiente]
 
   @type estado :: :pendiente | :entregado
@@ -22,6 +24,8 @@ defmodule Emergencias.Dominio.Mensaje do
   @doc """
   Crea un mensaje `:pendiente`. El `id` y la `fecha` los asigna quien lo guarda
   (el servidor) mediante las opciones `:id` y `:fecha`; si no se dan quedan en `nil`.
+
+  Errores: `:remitente_invalido`, `:destinatario_invalido`, `:contenido_invalido`.
   """
   @spec nuevo(term(), term(), term(), keyword()) :: {:ok, t()} | {:error, atom()}
   def nuevo(remitente, destinatario, contenido, opciones \\ []) do
@@ -52,12 +56,12 @@ defmodule Emergencias.Dominio.Mensaje do
     end
   end
 
-  @doc "Marca el mensaje como entregado."
+  @doc "Marca el mensaje como entregado. Error: `:ya_entregado`."
   @spec marcar_entregado(t()) :: {:ok, t()} | {:error, :ya_entregado}
   def marcar_entregado(%__MODULE__{estado: :entregado}), do: {:error, :ya_entregado}
   def marcar_entregado(%__MODULE__{} = mensaje), do: {:ok, %{mensaje | estado: :entregado}}
 
-  @doc "Marca el mensaje como pendiente."
+  @doc "Marca el mensaje como pendiente. Error: `:ya_pendiente`."
   @spec marcar_pendiente(t()) :: {:ok, t()} | {:error, :ya_pendiente}
   def marcar_pendiente(%__MODULE__{estado: :pendiente}), do: {:error, :ya_pendiente}
   def marcar_pendiente(%__MODULE__{} = mensaje), do: {:ok, %{mensaje | estado: :pendiente}}
@@ -76,29 +80,22 @@ defmodule Emergencias.Dominio.Mensaje do
 
   def estado_desde_texto(_), do: {:error, :estado_invalido}
 
-
-  @doc "Convierte el mensaje a una línea de texto."
+  @doc "Convierte el mensaje a una línea de texto (escapando `|`, `\\` y saltos de línea)."
   @spec a_linea(t()) :: String.t()
   def a_linea(%__MODULE__{} = m) do
-    [m.id, m.fecha, m.remitente, m.destinatario, m.contenido]
-    |> Enum.map(&escapar/1)
-    |> Kernel.++([Atom.to_string(m.estado)])
-    |> Enum.join("|")
+    Persistencia.unir_campos([m.id, m.fecha, m.remitente, m.destinatario, m.contenido, m.estado])
   end
 
-  @doc "Reconstruye un mensaje desde una línea."
+  @doc "Reconstruye un mensaje desde una línea. Devuelve `{:error, :linea_invalida}` si está dañada."
   @spec desde_linea(String.t()) :: {:ok, t()} | {:error, :linea_invalida}
   def desde_linea(linea) when is_binary(linea) do
     with [id, fecha, remitente, destinatario, contenido, estado] <-
-           linea |> String.trim() |> String.split("|"),
+           linea |> String.trim() |> Persistencia.separar_campos(),
          {:ok, estado} <- estado_desde_texto(estado),
          {:ok, mensaje} <-
-           nuevo(
-             desescapar(remitente),
-             desescapar(destinatario),
-             desescapar(contenido),
-             id: vacio_a_nil(desescapar(id)),
-             fecha: vacio_a_nil(desescapar(fecha))
+           nuevo(remitente, destinatario, contenido,
+             id: vacio_a_nil(id),
+             fecha: vacio_a_nil(fecha)
            ) do
       {:ok, %{mensaje | estado: estado}}
     else
@@ -108,34 +105,13 @@ defmodule Emergencias.Dominio.Mensaje do
 
   def desde_linea(_), do: {:error, :linea_invalida}
 
-  @doc "Escapa un texto para guardarlo en una línea."
-  @spec escapar(String.t() | nil) :: String.t()
-  def escapar(nil), do: ""
-
-  def escapar(texto) when is_binary(texto) do
-    texto
-    |> String.replace("\\", "\\\\")
-    |> String.replace("|", "\\p")
-    |> String.replace("\r", "")
-    |> String.replace("\n", "\\n")
-  end
-
-  @doc "Deshace `escapar/1`."
-  @spec desescapar(String.t()) :: String.t()
-  def desescapar(texto) when is_binary(texto) do
-    Regex.replace(~r/\\(.)/s, texto, fn _completo, caracter ->
-      case caracter do
-        "p" -> "|"
-        "n" -> "\n"
-        otro -> otro
-      end
-    end)
-  end
-
   defp vacio_a_nil(""), do: nil
   defp vacio_a_nil(texto), do: texto
 
-  defp limpiar(valor) when is_binary(valor), do: String.trim(valor)
+  # Quita espacios sobrantes y los "\r" (que `unir_campos/1` no escapa).
+  defp limpiar(valor) when is_binary(valor),
+    do: valor |> String.replace("\r", "") |> String.trim()
+
   defp limpiar(_), do: nil
 
   defp no_vacio?(valor), do: is_binary(valor) and valor != ""

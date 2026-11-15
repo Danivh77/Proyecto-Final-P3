@@ -55,10 +55,10 @@ defmodule Emergencias.Dominio.ReporteMascotaTest do
                ReporteMascota.nuevo("M1", :perdida, "perro", "L", "", "c", "t", "z", "")
 
       assert {:error, :datos_invalidos} =
-               ReporteMascota.nuevo("M1", :perdida, "perro", "L|x", "", "c", "t", "z", "x")
+               ReporteMascota.nuevo("M1", :perdida, "perro", "L\nx", "", "c", "t", "z", "x")
 
       assert {:error, :datos_invalidos} =
-               ReporteMascota.nuevo("M1", :perdida, "perro", "L", "a|b", "c", "t", "z", "x")
+               ReporteMascota.nuevo("M1", :perdida, "perro", "L", "a\nb", "c", "t", "z", "x")
     end
   end
 
@@ -119,6 +119,23 @@ defmodule Emergencias.Dominio.ReporteMascotaTest do
       assert {:ok, ^r} = r |> ReporteMascota.a_linea() |> ReporteMascota.desde_linea()
 
       {:ok, r} = ReporteMascota.resolver(r, "M2")
+      assert {:ok, ^r} = r |> ReporteMascota.a_linea() |> ReporteMascota.desde_linea()
+    end
+
+    test "características con | se escapan y se recuperan" do
+      {:ok, r} =
+        ReporteMascota.nuevo(
+          "M1",
+          :perdida,
+          "perro",
+          "L|una",
+          "collar | rojo",
+          "c",
+          "t",
+          "z",
+          "x"
+        )
+
       assert {:ok, ^r} = r |> ReporteMascota.a_linea() |> ReporteMascota.desde_linea()
     end
 

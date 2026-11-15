@@ -2,6 +2,7 @@ defmodule Emergencias.Dominio.MensajeTest do
   use ExUnit.Case, async: true
 
   alias Emergencias.Dominio.Mensaje
+  alias Emergencias.Persistencia
 
   defp mensaje(contenido \\ "Estoy bien, estoy en el albergue norte") do
     {:ok, m} =
@@ -46,19 +47,6 @@ defmodule Emergencias.Dominio.MensajeTest do
     end
   end
 
-  describe "escapar/1 y desescapar/1" do
-    test "son inversas para textos con caracteres especiales" do
-      for texto <- ["a|b", "a\\b", "a\\|b", "\\p", "linea1\nlinea2", "||", "ñandú | ç", "\\\\n"] do
-        assert texto |> Mensaje.escapar() |> Mensaje.desescapar() == texto
-      end
-    end
-
-    test "el texto escapado nunca contiene el separador" do
-      refute String.contains?(Mensaje.escapar("a|b|c"), "|")
-      refute String.contains?(Mensaje.escapar("a\nb"), "\n")
-    end
-  end
-
   describe "a_linea/1 y desde_linea/1" do
     test "guardar y volver a leer da el mismo mensaje" do
       m = mensaje()
@@ -68,8 +56,26 @@ defmodule Emergencias.Dominio.MensajeTest do
     test "el carácter | del contenido se escapa y se recupera" do
       m = mensaje("Estoy en A | B, no en C\\D")
       linea = Mensaje.a_linea(m)
-      assert length(String.split(linea, "|")) == 6
+      assert length(Persistencia.separar_campos(linea)) == 6
       assert {:ok, ^m} = Mensaje.desde_linea(linea)
+    end
+
+    test "textos con caracteres especiales sobreviven a guardar y leer" do
+      for texto <- ["a|b", "a\\b", "a\\|b", "\\p", "||", "ñandú | ç", "\\\\n", "x\\"] do
+        m = mensaje(texto)
+        assert {:ok, ^m} = m |> Mensaje.a_linea() |> Mensaje.desde_linea()
+      end
+    end
+
+    test "ignora los retornos de carro (\\r) del contenido" do
+      assert {:ok, m} = Mensaje.nuevo("laura", "1001", "hola\r\nmundo")
+      assert m.contenido == "hola\nmundo"
+    end
+
+    test "Persistencia.parsear_lineas/2 lo recupera junto con una línea dañada" do
+      m = mensaje("con | pipe y\nsalto")
+      lineas = [Mensaje.a_linea(m), "linea dañada", ""]
+      assert [^m] = Persistencia.parsear_lineas(lineas, &Mensaje.desde_linea/1)
     end
 
     test "conserva el estado entregado y los saltos de línea" do

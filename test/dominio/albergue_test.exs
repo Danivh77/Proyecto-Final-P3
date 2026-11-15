@@ -32,7 +32,7 @@ defmodule Emergencias.Dominio.AlbergueTest do
 
     test "rechaza nombre o zona vacíos o con el separador" do
       assert {:error, :datos_invalidos} = Albergue.nuevo("A01", "", "z", 10)
-      assert {:error, :datos_invalidos} = Albergue.nuevo("A01", "Norte|Sur", "z", 10)
+      assert {:error, :datos_invalidos} = Albergue.nuevo("A01", "Norte\nSur", "z", 10)
       assert {:error, :datos_invalidos} = Albergue.nuevo("A01", "N", "  ", 10)
     end
   end
@@ -107,6 +107,11 @@ defmodule Emergencias.Dominio.AlbergueTest do
 
       assert {:ok, leido} = a |> Albergue.a_linea() |> Albergue.desde_linea()
       assert leido == a
+    end
+
+    test "un nombre con | se escapa y se recupera" do
+      {:ok, a} = Albergue.nuevo("A09", "Norte | Sur", "zona|1", 5)
+      assert {:ok, ^a} = a |> Albergue.a_linea() |> Albergue.desde_linea()
     end
 
     test "un albergue vacío también se recupera" do

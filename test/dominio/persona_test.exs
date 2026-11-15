@@ -26,7 +26,7 @@ defmodule Emergencias.Dominio.PersonaTest do
 
     test "valida los datos" do
       assert {:error, :datos_invalidos} = Persona.nuevo("", "1001", "Ana", 3, "centro")
-      assert {:error, :datos_invalidos} = Persona.nuevo("P1", "1001", "A|na", 3, "centro")
+      assert {:error, :datos_invalidos} = Persona.nuevo("P1", "1001", "A\nna", 3, "centro")
       assert {:error, :datos_invalidos} = Persona.nuevo("P1", "1001", "Ana", 3, "")
       assert {:error, :documento_invalido} = Persona.nuevo("P1", "", "Ana", 3, "centro")
       assert {:error, :documento_invalido} = Persona.nuevo("P1", "1,2", "Ana", 3, "centro")
@@ -155,6 +155,11 @@ defmodule Emergencias.Dominio.PersonaTest do
 
       assert {:ok, leida} = p |> Persona.a_linea() |> Persona.desde_linea()
       assert leida == p
+    end
+
+    test "un nombre con | se escapa y se recupera" do
+      {:ok, p} = Persona.nuevo("P1", "1001", "Ana | María", 3, "centro")
+      assert {:ok, ^p} = p |> Persona.a_linea() |> Persona.desde_linea()
     end
 
     test "edad desconocida e historial vacío se recuperan" do
