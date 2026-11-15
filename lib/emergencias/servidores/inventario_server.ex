@@ -29,6 +29,9 @@ defmodule Emergencias.Servidores.InventarioServer do
   def descontar(recurso, cantidad, referencia, usuario),
     do: mover("asignacion", recurso, cantidad, referencia, usuario)
 
+  @doc "Obtiene el descuento confirmado para una necesidad, con su ubicación de origen."
+  def asignacion_de(id), do: llamar({:asignacion_de, id})
+
   def transferir(codigo, origen, destino, cantidad, usuario \\ "sistema"),
     do: llamar({:transferir, codigo, origen, destino, cantidad, usuario})
 
@@ -84,6 +87,25 @@ defmodule Emergencias.Servidores.InventarioServer do
     end
   end
 
+  def handle_call({:mover, "asignacion", clave, cantidad, {:necesidad, id}, usuario}, _, estado) do
+    case asignacion_guardada(estado, id) do
+      {:ok, _} = resultado ->
+        {:reply, resultado, estado}
+
+      {:error, :no_encontrado} ->
+        with {:ok, recurso} <- buscar(estado, clave),
+             {:ok, actualizado} <- Recurso.salida(recurso, cantidad),
+             referencia = Persistencia.unir_campos(["necesidad", id, recurso.ubicacion]),
+             {:ok, movimiento} <-
+               Movimiento.nuevo("asignacion", recurso.codigo, cantidad, referencia, usuario) do
+          nuevo = estado |> poner(actualizado) |> registrar_movimiento(movimiento)
+          guardar(estado, nuevo, {recurso.codigo, recurso.ubicacion, cantidad})
+        else
+          error -> {:reply, error, estado}
+        end
+    end
+  end
+
   def handle_call({:mover, tipo, clave, cantidad, referencia, usuario}, _, estado) do
     with {:ok, recurso} <- buscar(estado, clave),
          {:ok, actualizado} <- ajustar(tipo, recurso, cantidad),
@@ -134,6 +156,9 @@ defmodule Emergencias.Servidores.InventarioServer do
   def handle_call({:historial, codigo}, _, estado),
     do: {:reply, Enum.filter(estado.movimientos, &(&1.recurso == codigo)), estado}
 
+  def handle_call({:asignacion_de, id}, _, estado),
+    do: {:reply, asignacion_guardada(estado, id), estado}
+
   def handle_call(:resumen, _, estado) do
     recursos = Map.values(estado.recursos)
     codigos = recursos |> MapSet.new(& &1.codigo) |> MapSet.size()
@@ -146,6 +171,22 @@ defmodule Emergencias.Servidores.InventarioServer do
       {:ok, zona} -> Zona.listar_codigos(zona)
       {:error, :no_encontrado} -> [codigo]
     end
+  end
+
+  defp asignacion_guardada(estado, id) do
+    Enum.find_value(estado.movimientos, {:error, :no_encontrado}, fn
+      %Movimiento{tipo: "asignacion", referencia: "necesidad|" <> _ = referencia} = movimiento ->
+        case Persistencia.separar_campos(referencia) do
+          ["necesidad", ^id, ubicacion] ->
+            {:ok, {movimiento.recurso, ubicacion, movimiento.cantidad}}
+
+          _ ->
+            nil
+        end
+
+      _ ->
+        nil
+    end)
   end
 
   defp ajustar("entrada", recurso, cantidad), do: Recurso.entrada(recurso, cantidad)

@@ -9,6 +9,7 @@ defmodule Emergencias.CLI.Dispatcher do
   alias Emergencias.Servidores.{
     ActividadLogger,
     InventarioServer,
+    NecesidadServer,
     Sesion,
     SesionSupervisor,
     UsuarioServer,
@@ -231,6 +232,69 @@ defmodule Emergencias.CLI.Dispatcher do
   defp ejecutar({:critical_resources, _}, sesion),
     do: {{:error, {:uso, "critical_resources [umbral]"}}, sesion}
 
+  defp ejecutar({:register_need, [tipo, cantidad, prioridad, zona, descripcion | resto]}, sesion)
+       when length(resto) <= 1 do
+    resultado =
+      with {:ok, numero} <- Parser.a_entero_positivo(cantidad) do
+        NecesidadServer.registrar(
+          tipo,
+          numero,
+          prioridad,
+          zona,
+          descripcion,
+          sesion.usuario,
+          List.first(resto)
+        )
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:register_need, _}, sesion),
+    do:
+      {{:error, {:uso, "register_need tipo cantidad prioridad zona descripcion [albergue]"}},
+       sesion}
+
+  defp ejecutar({:list_needs, args}, sesion) do
+    resultado =
+      with {:ok, filtros} <- Parser.parsear_filtros(args),
+           :ok <- validar_filtros_necesidades(filtros) do
+        {:ok, NecesidadServer.listar(filtros)}
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:update_need, [id, estado]}, sesion),
+    do: {NecesidadServer.cambiar_estado(id, estado), sesion}
+
+  defp ejecutar({:update_need, _}, sesion),
+    do: {{:error, {:uso, "update_need id en_atencion|atendida|cancelada"}}, sesion}
+
+  defp ejecutar({:assign_resource, [id, recurso, cantidad | resto]}, sesion)
+       when length(resto) <= 1 do
+    selector =
+      case resto do
+        [] -> recurso
+        [ubicacion] -> {recurso, ubicacion}
+      end
+
+    resultado =
+      with {:ok, numero} <- Parser.a_entero_positivo(cantidad) do
+        NecesidadServer.asignar_recurso(id, selector, numero, sesion.usuario)
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:assign_resource, _}, sesion),
+    do: {{:error, {:uso, "assign_resource id recurso cantidad [ubicacion]"}}, sesion}
+
+  defp ejecutar({:pending_needs, []}, sesion), do: {{:ok, NecesidadServer.pendientes()}, sesion}
+
+  defp ejecutar({:pending_needs, _}, sesion),
+    do: {{:error, {:uso, "pending_needs"}}, sesion}
+
   # ============================== INTEGRANTE 3 ===============================
 
   # Debe ir de última.
@@ -250,10 +314,16 @@ defmodule Emergencias.CLI.Dispatcher do
   defp zona_registrada({:ok, nodo}), do: {:ok, "Registrado: #{nodo.nombre} (#{nodo.codigo})."}
   defp zona_registrada(error), do: error
 
+  defp validar_filtros_necesidades(filtros) do
+    validar_filtros(filtros, [:zona, :tipo, :prioridad, :estado, :albergue])
+  end
+
   defp validar_filtros_inventario(filtros) do
-    case Enum.find(filtros, fn {campo, _} ->
-           campo not in [:tipo, :categoria, :zona, :ubicacion, :nombre]
-         end) do
+    validar_filtros(filtros, [:tipo, :categoria, :zona, :ubicacion, :nombre])
+  end
+
+  defp validar_filtros(filtros, permitidos) do
+    case Enum.find(filtros, fn {campo, _} -> campo not in permitidos end) do
       nil -> :ok
       {campo, valor} -> {:error, {:filtro_invalido, "#{campo}=#{valor}"}}
     end
