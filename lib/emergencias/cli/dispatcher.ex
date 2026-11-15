@@ -8,6 +8,7 @@ defmodule Emergencias.CLI.Dispatcher do
 
   alias Emergencias.Servidores.{
     ActividadLogger,
+    InventarioServer,
     Sesion,
     SesionSupervisor,
     UsuarioServer,
@@ -130,6 +131,106 @@ defmodule Emergencias.CLI.Dispatcher do
   defp ejecutar({:zone_stats, _}, sesion),
     do: {{:error, {:uso, "zone_stats codigo"}}, sesion}
 
+  defp ejecutar({:register_resource, [codigo, nombre, cantidad, unidad, ubicacion]}, sesion),
+    do:
+      ejecutar(
+        {:register_resource, [codigo, nombre, nombre, cantidad, unidad, ubicacion]},
+        sesion
+      )
+
+  defp ejecutar(
+         {:register_resource, [codigo, nombre, categoria, cantidad, unidad, ubicacion]},
+         sesion
+       ) do
+    resultado =
+      with {:ok, numero} <- Parser.a_entero(cantidad) do
+        InventarioServer.registrar_recurso(codigo, nombre, categoria, numero, unidad, ubicacion)
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:register_resource, _}, sesion),
+    do:
+      {{:error, {:uso, "register_resource codigo nombre [categoria] cantidad unidad ubicacion"}},
+       sesion}
+
+  defp ejecutar({comando, [codigo, cantidad | ubicacion]}, sesion)
+       when comando in [:resource_entry, :resource_exit] and length(ubicacion) <= 1 do
+    clave =
+      case ubicacion do
+        [] -> codigo
+        [lugar] -> {codigo, lugar}
+      end
+
+    operacion =
+      if comando == :resource_entry,
+        do: &InventarioServer.entrada/3,
+        else: &InventarioServer.salida/3
+
+    resultado =
+      with {:ok, numero} <- Parser.a_entero_positivo(cantidad) do
+        operacion.(clave, numero, sesion.usuario)
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({comando, _}, sesion) when comando in [:resource_entry, :resource_exit],
+    do: {{:error, {:uso, "#{comando} codigo cantidad [ubicacion]"}}, sesion}
+
+  defp ejecutar({:list_resources, args}, sesion) do
+    resultado =
+      with {:ok, filtros} <- Parser.parsear_filtros(args),
+           :ok <- validar_filtros_inventario(filtros) do
+        filtros =
+          Enum.map(filtros, fn
+            {:tipo, valor} -> {:categoria, valor}
+            filtro -> filtro
+          end)
+
+        {:ok, InventarioServer.listar(filtros)}
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:transfer_resource, [codigo, origen, destino, cantidad]}, sesion) do
+    resultado =
+      with {:ok, numero} <- Parser.a_entero_positivo(cantidad) do
+        InventarioServer.transferir(codigo, origen, destino, numero, sesion.usuario)
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:transfer_resource, _}, sesion),
+    do: {{:error, {:uso, "transfer_resource codigo origen destino cantidad"}}, sesion}
+
+  defp ejecutar({:resource_history, [codigo]}, sesion),
+    do: {{:ok, InventarioServer.historial(codigo)}, sesion}
+
+  defp ejecutar({:resource_history, _}, sesion),
+    do: {{:error, {:uso, "resource_history codigo"}}, sesion}
+
+  defp ejecutar({:critical_resources, []}, sesion),
+    do: {{:ok, InventarioServer.criticos()}, sesion}
+
+  defp ejecutar({:critical_resources, [umbral]}, sesion) do
+    resultado =
+      with {:ok, numero} when numero >= 0 <- Parser.a_entero(umbral) do
+        {:ok, InventarioServer.criticos(numero)}
+      else
+        {:ok, _} -> {:error, :cantidad_invalida}
+        error -> error
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:critical_resources, _}, sesion),
+    do: {{:error, {:uso, "critical_resources [umbral]"}}, sesion}
+
   # ============================== INTEGRANTE 3 ===============================
 
   # Debe ir de última.
@@ -148,6 +249,15 @@ defmodule Emergencias.CLI.Dispatcher do
 
   defp zona_registrada({:ok, nodo}), do: {:ok, "Registrado: #{nodo.nombre} (#{nodo.codigo})."}
   defp zona_registrada(error), do: error
+
+  defp validar_filtros_inventario(filtros) do
+    case Enum.find(filtros, fn {campo, _} ->
+           campo not in [:tipo, :categoria, :zona, :ubicacion, :nombre]
+         end) do
+      nil -> :ok
+      {campo, valor} -> {:error, {:filtro_invalido, "#{campo}=#{valor}"}}
+    end
+  end
 
   defp cerrar(sesion) do
     UsuarioServer.disconnect(sesion.usuario)
