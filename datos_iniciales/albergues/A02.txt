@@ -1,1 +1,1 @@
-A02|Albergue Centro|centro|80|||
+A02|Albergue Centro|zona_demo|80|||
