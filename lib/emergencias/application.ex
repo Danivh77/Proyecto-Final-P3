@@ -17,7 +17,7 @@ defmodule Emergencias.Application do
       Emergencias.Servidores.ActividadLogger,
       Emergencias.Servidores.UsuarioServer,
       Emergencias.Servidores.SesionSupervisor,
-      # Emergencias.Servidores.ZonaServer,
+      Emergencias.Servidores.ZonaServer
       # Emergencias.Servidores.InventarioServer,
       # Emergencias.Servidores.NecesidadServer,
       # Emergencias.Servidores.FamiliaServer,

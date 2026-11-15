@@ -34,8 +34,23 @@ defmodule Emergencias.DatosPrueba do
   end
 
   # INTEGRANTE 2: Zonas, necesidades y recursos
-  # Funciones acordadas: zona_ejemplo/0 (árbol de 3 niveles),
-  #                      recurso_ejemplo/1, necesidad_ejemplo/1
+
+  alias Emergencias.Dominio.Zona
+
+  @doc "Árbol de prueba con una zona, dos sectores y un punto de atención."
+  def zona_ejemplo do
+    {:ok, zona} = Zona.nuevo("centro", "Centro", "zona", "crítico", 100)
+    {:ok, sector_norte} = Zona.nuevo("norte", "Norte", "sector", "alto", 30)
+    {:ok, sector_sur} = Zona.nuevo("sur", "Sur", "sector", "medio", 20)
+    {:ok, punto} = Zona.nuevo("p01", "Puesto | Sur\nEntrada principal", "punto", "bajo", 5)
+
+    {:ok, arbol} = Zona.agregar_hijo(zona, "centro", sector_norte)
+    {:ok, arbol} = Zona.agregar_hijo(arbol, "centro", sector_sur)
+    {:ok, arbol} = Zona.agregar_hijo(arbol, "sur", punto)
+    arbol
+  end
+
+  # Funciones pendientes: recurso_ejemplo/1, necesidad_ejemplo/1
   #
   # Ejemplo (quitar los # y ajustar):
   #
