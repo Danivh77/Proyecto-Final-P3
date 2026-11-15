@@ -2,7 +2,10 @@ defmodule Emergencias.Dominio.Albergue do
   @moduledoc """
   Dominio puro de un albergue: capacidad, ocupantes, recursos y necesidades asociadas.
 
+
   """
+
+  alias Emergencias.Persistencia
 
   defstruct [
     :codigo,
@@ -27,6 +30,7 @@ defmodule Emergencias.Dominio.Albergue do
 
   @doc """
   Crea un albergue vacío.
+
   """
   @spec nuevo(term(), term(), term(), term()) :: {:ok, t()} | {:error, atom()}
   def nuevo(codigo, nombre, zona, capacidad) do
@@ -62,7 +66,6 @@ defmodule Emergencias.Dominio.Albergue do
 
   def normalizar_codigo(_), do: nil
 
-
   @doc "Número de personas dentro del albergue."
   @spec ocupacion(t()) :: non_neg_integer()
   def ocupacion(%__MODULE__{ocupantes: ocupantes}), do: MapSet.size(ocupantes)
@@ -72,15 +75,15 @@ defmodule Emergencias.Dominio.Albergue do
   def cupos(%__MODULE__{capacidad: capacidad} = albergue),
     do: max(capacidad - ocupacion(albergue), 0)
 
-  @doc "Porcentaje de ocupación con un decimal."
+  @doc "Porcentaje de ocupación con un decimal (0.0 a 100.0)."
   @spec porcentaje_ocupacion(t()) :: float()
   def porcentaje_ocupacion(%__MODULE__{capacidad: capacidad} = albergue) do
     Float.round(ocupacion(albergue) * 100 / capacidad, 1)
   end
 
-
   @doc """
   Registra el ingreso de una persona (por documento).
+
   """
   @spec ingresar(t(), term()) :: {:ok, t()} | {:error, atom()}
   def ingresar(%__MODULE__{} = albergue, documento) do
@@ -94,7 +97,7 @@ defmodule Emergencias.Dominio.Albergue do
     end
   end
 
-  @doc "Registra la salida de una persona."
+  @doc "Registra la salida de una persona. Errores: `:documento_invalido`, `:no_esta_dentro`."
   @spec salir(t(), term()) :: {:ok, t()} | {:error, atom()}
   def salir(%__MODULE__{} = albergue, documento) do
     documento = limpiar(documento)
@@ -106,7 +109,7 @@ defmodule Emergencias.Dominio.Albergue do
     end
   end
 
-  @doc "Asocia el código de un recurso al albergue."
+  @doc "Asocia el código de un recurso al albergue. Errores: `:datos_invalidos`, `:ya_asociado`."
   @spec asociar_recurso(t(), term()) :: {:ok, t()} | {:error, atom()}
   def asociar_recurso(%__MODULE__{} = albergue, codigo_recurso) do
     with {:ok, lista} <- agregar_unico(albergue.recursos, codigo_recurso) do
@@ -114,7 +117,7 @@ defmodule Emergencias.Dominio.Albergue do
     end
   end
 
-  @doc "Asocia el id de una necesidad al albergue."
+  @doc "Asocia el id de una necesidad al albergue. Errores: `:datos_invalidos`, `:ya_asociado`."
   @spec asociar_necesidad(t(), term()) :: {:ok, t()} | {:error, atom()}
   def asociar_necesidad(%__MODULE__{} = albergue, id_necesidad) do
     with {:ok, lista} <- agregar_unico(albergue.necesidades, id_necesidad) do
@@ -126,25 +129,22 @@ defmodule Emergencias.Dominio.Albergue do
   @doc "Convierte el albergue a una línea de texto."
   @spec a_linea(t()) :: String.t()
   def a_linea(%__MODULE__{} = albergue) do
-    Enum.join(
-      [
-        albergue.codigo,
-        albergue.nombre,
-        albergue.zona,
-        albergue.capacidad,
-        albergue.ocupantes |> Enum.sort() |> Enum.join(","),
-        Enum.join(albergue.recursos, ","),
-        Enum.join(albergue.necesidades, ",")
-      ],
-      "|"
-    )
+    Persistencia.unir_campos([
+      albergue.codigo,
+      albergue.nombre,
+      albergue.zona,
+      albergue.capacidad,
+      albergue.ocupantes |> Enum.sort() |> Enum.join(","),
+      Enum.join(albergue.recursos, ","),
+      Enum.join(albergue.necesidades, ",")
+    ])
   end
 
-  @doc "Reconstruye un albergue desde una línea."
+  @doc "Reconstruye un albergue desde una línea. Devuelve `{:error, :linea_invalida}` si está dañada."
   @spec desde_linea(String.t()) :: {:ok, t()} | {:error, :linea_invalida}
   def desde_linea(linea) when is_binary(linea) do
     with [codigo, nombre, zona, capacidad, ocupantes, recursos, necesidades] <-
-           linea |> String.trim() |> String.split("|"),
+           linea |> String.trim() |> Persistencia.separar_campos(),
          {capacidad, ""} <- Integer.parse(capacidad),
          {:ok, albergue} <- nuevo(codigo, nombre, zona, capacidad),
          ocupantes = MapSet.new(dividir(ocupantes)),
@@ -182,8 +182,9 @@ defmodule Emergencias.Dominio.Albergue do
   defp codigo_valido?(valor) when is_binary(valor), do: Regex.match?(~r/^[A-Za-z0-9_-]+$/, valor)
   defp codigo_valido?(_), do: false
 
-  # Texto libre: no vacío y sin el separador `|` ni saltos de línea.
-  defp texto_valido?(valor) when is_binary(valor), do: Regex.match?(~r/^[^|\r\n]+$/, valor)
+  # Texto libre: no vacío y sin saltos de línea. El carácter `|` sí se admite porque
+  # `Persistencia.unir_campos/1` lo escapa al guardar.
+  defp texto_valido?(valor) when is_binary(valor), do: Regex.match?(~r/^[^\r\n]+$/, valor)
   defp texto_valido?(_), do: false
 
   # Documento / código de referencia: además no puede contener `,` (separa listas).

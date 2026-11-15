@@ -4,6 +4,8 @@ defmodule Emergencias.Dominio.ReporteMascota do
 
   """
 
+  alias Emergencias.Persistencia
+
   defstruct [
     :id,
     :tipo,
@@ -79,11 +81,11 @@ defmodule Emergencias.Dominio.ReporteMascota do
     |> String.replace(~r/\p{Mn}/u, "")
   end
 
-
   @doc """
   Crea un reporte `:activa`. El nombre y las características son opcionales
   (`nil` o vacío: el nombre queda como `"desconocido"`).
 
+  Errores: `:datos_invalidos`, `:tipo_invalido`.
   """
   @spec nuevo(term(), term(), term(), term(), term(), term(), term(), term(), term()) ::
           {:ok, t()} | {:error, atom()}
@@ -126,7 +128,7 @@ defmodule Emergencias.Dominio.ReporteMascota do
 
   @doc """
   Marca el reporte como posible coincidencia con otro (`id_otro`). Puede repetirse para
-  actualizar la coincidencia.
+  actualizar la coincidencia. Error: `:ya_resuelto`.
   """
   @spec marcar_posible(t(), String.t()) :: {:ok, t()} | {:error, atom()}
   def marcar_posible(%__MODULE__{estado: :resuelta}, _id_otro), do: {:error, :ya_resuelto}
@@ -138,7 +140,7 @@ defmodule Emergencias.Dominio.ReporteMascota do
 
   def marcar_posible(%__MODULE__{}, _id_otro), do: {:error, :datos_invalidos}
 
-  @doc "Cierra el reporte registrando con quién coincidió."
+  @doc "Cierra el reporte registrando con quién coincidió. Error: `:ya_resuelto` si ya estaba cerrado."
   @spec resolver(t(), String.t()) :: {:ok, t()} | {:error, atom()}
   def resolver(%__MODULE__{estado: :resuelta}, _id_otro), do: {:error, :ya_resuelto}
 
@@ -148,10 +150,9 @@ defmodule Emergencias.Dominio.ReporteMascota do
 
   def resolver(%__MODULE__{}, _id_otro), do: {:error, :datos_invalidos}
 
-
   @doc """
   Filtra una lista de reportes por `:especie`, `:zona`, `:estado` y/o `:tipo`
-
+  (keyword list o mapa). Los filtros en `nil` y las claves desconocidas se ignoran.
   """
   @spec filtrar([t()], keyword() | map()) :: [t()]
   def filtrar(reportes, filtros) do
@@ -172,29 +173,26 @@ defmodule Emergencias.Dominio.ReporteMascota do
   @doc "Convierte el reporte a una línea de texto."
   @spec a_linea(t()) :: String.t()
   def a_linea(%__MODULE__{} = r) do
-    Enum.join(
-      [
-        r.id,
-        r.tipo,
-        r.especie,
-        r.nombre,
-        r.caracteristicas,
-        r.color,
-        r.tamano,
-        r.zona,
-        r.contacto,
-        r.estado,
-        r.coincidencia_con
-      ],
-      "|"
-    )
+    Persistencia.unir_campos([
+      r.id,
+      r.tipo,
+      r.especie,
+      r.nombre,
+      r.caracteristicas,
+      r.color,
+      r.tamano,
+      r.zona,
+      r.contacto,
+      r.estado,
+      r.coincidencia_con
+    ])
   end
 
-  @doc "Reconstruye un reporte desde una línea."
+  @doc "Reconstruye un reporte desde una línea. Devuelve `{:error, :linea_invalida}` si está dañada."
   @spec desde_linea(String.t()) :: {:ok, t()} | {:error, :linea_invalida}
   def desde_linea(linea) when is_binary(linea) do
     with [id, tipo, especie, nombre, caracteristicas, color, tamano, zona, contacto, estado, otro] <-
-           linea |> String.trim() |> String.split("|"),
+           linea |> String.trim() |> Persistencia.separar_campos(),
          {:ok, reporte} <-
            nuevo(id, tipo, especie, nombre, caracteristicas, color, tamano, zona, contacto),
          {:ok, estado} <- estado_desde_texto(estado) do
@@ -206,7 +204,6 @@ defmodule Emergencias.Dominio.ReporteMascota do
 
   def desde_linea(_), do: {:error, :linea_invalida}
 
- 
   defp limpiar(valor) when is_binary(valor), do: String.trim(valor)
   defp limpiar(_), do: nil
 
@@ -221,12 +218,13 @@ defmodule Emergencias.Dominio.ReporteMascota do
 
   defp opcional(_, _), do: nil
 
-  defp texto_valido?(valor) when is_binary(valor), do: Regex.match?(~r/^[^|\r\n]+$/, valor)
+  # Texto libre: no vacío y sin saltos de línea (el `|` se escapa al guardar).
+  defp texto_valido?(valor) when is_binary(valor), do: Regex.match?(~r/^[^\r\n]+$/, valor)
   defp texto_valido?(_), do: false
 
   # Como `texto_valido?/1` pero admite vacío (campos opcionales).
   defp texto_seguro?(valor) when is_binary(valor),
-    do: not String.contains?(valor, ["|", "\r", "\n"])
+    do: not String.contains?(valor, ["\r", "\n"])
 
   defp texto_seguro?(_), do: false
 end
