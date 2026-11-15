@@ -21,7 +21,7 @@ defmodule Emergencias.CLI.Parser do
     report_pet list_pets match_pets confirm_match
   )
 
-  @filtros ~w(zona prioridad estado tipo especie categoria nombre documento ubicacion)
+  @filtros ~w(zona prioridad estado tipo especie categoria nombre documento ubicacion albergue)
 
   @doc "Lista de nombres de comandos válidos."
   def comandos, do: @comandos

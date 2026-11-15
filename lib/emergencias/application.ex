@@ -18,8 +18,8 @@ defmodule Emergencias.Application do
       Emergencias.Servidores.UsuarioServer,
       Emergencias.Servidores.SesionSupervisor,
       Emergencias.Servidores.ZonaServer,
-      Emergencias.Servidores.InventarioServer
-      # Emergencias.Servidores.NecesidadServer,
+      Emergencias.Servidores.InventarioServer,
+      Emergencias.Servidores.NecesidadServer
       # Emergencias.Servidores.FamiliaServer,
       # Emergencias.Servidores.MascotaServer,
       # Emergencias.Servidores.AlbergueSupervisor

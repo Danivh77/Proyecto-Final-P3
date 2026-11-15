@@ -35,7 +35,7 @@ defmodule Emergencias.DatosPrueba do
 
   # INTEGRANTE 2: Zonas, necesidades y recursos
 
-  alias Emergencias.Dominio.{Recurso, Zona}
+  alias Emergencias.Dominio.{Necesidad, Recurso, Zona}
 
   @doc "Árbol de prueba con una zona, dos sectores y un punto de atención."
   def zona_ejemplo do
@@ -56,7 +56,13 @@ defmodule Emergencias.DatosPrueba do
     recurso
   end
 
-  # Función pendiente: necesidad_ejemplo/1
+  @doc "Necesidad de agua pendiente con prioridad configurable."
+  def necesidad_ejemplo(prioridad \\ "critica") do
+    {:ok, necesidad} =
+      Necesidad.nuevo("N001", "agua", "Agua para el puesto de atención", 30, "centro", prioridad, "laura")
+
+    necesidad
+  end
 
   # INTEGRANTE 3: Albergues, familiares y mascotas
   # Funciones acordadas: albergue_ejemplo/1, persona_ejemplo/1,
