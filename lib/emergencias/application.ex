@@ -19,10 +19,10 @@ defmodule Emergencias.Application do
       Emergencias.Servidores.SesionSupervisor,
       Emergencias.Servidores.ZonaServer,
       Emergencias.Servidores.InventarioServer,
-      Emergencias.Servidores.NecesidadServer
-      # Emergencias.Servidores.FamiliaServer,
-      # Emergencias.Servidores.MascotaServer,
-      # Emergencias.Servidores.AlbergueSupervisor
+      Emergencias.Servidores.NecesidadServer,
+      Emergencias.Servidores.FamiliaServer,
+      Emergencias.Servidores.MascotaServer,
+      Emergencias.Servidores.AlbergueSupervisor
     ]
 
     opts = [strategy: :one_for_one, name: Emergencias.Supervisor]

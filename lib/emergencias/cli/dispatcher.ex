@@ -8,7 +8,11 @@ defmodule Emergencias.CLI.Dispatcher do
 
   alias Emergencias.Servidores.{
     ActividadLogger,
+    AlbergueServer,
+    AlbergueSupervisor,
+    FamiliaServer,
     InventarioServer,
+    MascotaServer,
     NecesidadServer,
     Sesion,
     SesionSupervisor,
@@ -17,6 +21,16 @@ defmodule Emergencias.CLI.Dispatcher do
   }
 
   @comandos_publicos [:connect, :help, :exit]
+
+  @servidores_con_resumen [
+    UsuarioServer,
+    ZonaServer,
+    InventarioServer,
+    NecesidadServer,
+    FamiliaServer,
+    MascotaServer,
+    AlbergueSupervisor
+  ]
 
   @doc "Ejecuta el comando si hay sesión (o si es público)."
   def despachar({comando, _args} = cmd, sesion) do
@@ -69,7 +83,8 @@ defmodule Emergencias.CLI.Dispatcher do
     {{:ok, "Sesión de #{sesion.usuario} cerrada."}, nil}
   end
 
-  defp ejecutar({:summary, []}, sesion), do: {{:error, :no_implementado}, sesion}
+  defp ejecutar({:summary, []}, sesion), do: {{:ok, {:resumen, resumen_global()}}, sesion}
+  defp ejecutar({:summary, _}, sesion), do: {{:error, {:uso, "summary"}}, sesion}
 
   defp ejecutar({:activity_log, args}, sesion) when length(args) <= 1 do
     usuario = List.first(args, :todos)
@@ -304,6 +319,191 @@ defmodule Emergencias.CLI.Dispatcher do
 
   # ============================== INTEGRANTE 3 ===============================
 
+  defp ejecutar({:register_shelter, [codigo, nombre, zona, capacidad]}, sesion) do
+    resultado =
+      with {:ok, numero} <- Parser.a_entero(capacidad),
+           {:ok, albergue} <- AlbergueSupervisor.crear_albergue(codigo, nombre, zona, numero) do
+        {:ok,
+         "Albergue registrado: #{albergue.nombre} (#{albergue.codigo}), capacidad #{albergue.capacidad}."}
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:register_shelter, _}, sesion),
+    do: {{:error, {:uso, "register_shelter codigo nombre zona capacidad"}}, sesion}
+
+  defp ejecutar({:check_shelter, [codigo]}, sesion),
+    do: {AlbergueServer.consultar(codigo), sesion}
+
+  defp ejecutar({:check_shelter, _}, sesion),
+    do: {{:error, {:uso, "check_shelter codigo"}}, sesion}
+
+  defp ejecutar({:list_shelters, []}, sesion), do: {AlbergueSupervisor.listar(), sesion}
+
+  defp ejecutar({:list_shelters, _}, sesion), do: {{:error, {:uso, "list_shelters"}}, sesion}
+
+  defp ejecutar({:register_entry, [codigo, documento]}, sesion) do
+    {movimiento_albergue(
+       AlbergueServer.registrar_entrada(codigo, documento),
+       "Ingreso registrado"
+     ), sesion}
+  end
+
+  defp ejecutar({:register_entry, _}, sesion),
+    do: {{:error, {:uso, "register_entry codigo_albergue documento"}}, sesion}
+
+  defp ejecutar({:register_exit, [codigo, documento]}, sesion) do
+    {movimiento_albergue(AlbergueServer.registrar_salida(codigo, documento), "Salida registrada"),
+     sesion}
+  end
+
+  defp ejecutar({:register_exit, _}, sesion),
+    do: {{:error, {:uso, "register_exit codigo_albergue documento"}}, sesion}
+
+  defp ejecutar({:shelter_report, []}, sesion), do: {AlbergueSupervisor.mas_ocupados(), sesion}
+
+  defp ejecutar({:shelter_report, [limite]}, sesion) do
+    resultado =
+      with {:ok, numero} <- Parser.a_entero_positivo(limite) do
+        AlbergueSupervisor.mas_ocupados(numero)
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:shelter_report, _}, sesion),
+    do: {{:error, {:uso, "shelter_report [cantidad]"}}, sesion}
+
+  defp ejecutar({:report_person, [documento, nombre, edad, zona | resto]}, sesion)
+       when length(resto) <= 1 do
+    estado = List.first(resto, "reportada")
+
+    resultado =
+      with {:ok, edad} <- leer_edad(edad),
+           {:ok, persona} <- FamiliaServer.reportar_persona(documento, nombre, edad, zona, estado) do
+        {:ok, sin_historial(persona)}
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:report_person, _}, sesion),
+    do: {{:error, {:uso, "report_person documento nombre edad|- zona [estado]"}}, sesion}
+
+  defp ejecutar({:find_person, [documento]}, sesion) do
+    resultado =
+      with {:ok, persona} <- FamiliaServer.buscar(documento) do
+        {:ok, sin_historial(persona)}
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:find_person, _}, sesion),
+    do: {{:error, {:uso, "find_person documento"}}, sesion}
+
+  defp ejecutar({:search_persons, args}, sesion) do
+    resultado =
+      with {:ok, filtros} <- Parser.parsear_filtros(args),
+           {:ok, personas} <- FamiliaServer.buscar_por(filtros) do
+        {:ok, Enum.map(personas, &sin_historial/1)}
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:update_person, [documento, estado]}, sesion) do
+    resultado =
+      with {:ok, persona} <- FamiliaServer.cambiar_estado(documento, estado, sesion.usuario) do
+        {:ok, sin_historial(persona)}
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:update_person, _}, sesion),
+    do: {{:error, {:uso, "update_person documento estado"}}, sesion}
+
+  defp ejecutar({:person_history, [documento]}, sesion),
+    do: {FamiliaServer.historial(documento), sesion}
+
+  defp ejecutar({:person_history, _}, sesion),
+    do: {{:error, {:uso, "person_history documento"}}, sesion}
+
+  defp ejecutar({:send_family_message, [documento, contenido]}, sesion),
+    do: {FamiliaServer.enviar_mensaje(sesion.usuario, documento, contenido), sesion}
+
+  defp ejecutar({:send_family_message, _}, sesion),
+    do: {{:error, {:uso, "send_family_message documento \"mensaje\""}}, sesion}
+
+  defp ejecutar({:list_family_messages, [documento]}, sesion),
+    do: {FamiliaServer.listar_mensajes(documento), sesion}
+
+  defp ejecutar({:list_family_messages, _}, sesion),
+    do: {{:error, {:uso, "list_family_messages documento"}}, sesion}
+
+  defp ejecutar({:mark_message, [id, estado]}, sesion),
+    do: {FamiliaServer.marcar_mensaje(id, estado), sesion}
+
+  defp ejecutar({:mark_message, _}, sesion),
+    do: {{:error, {:uso, "mark_message id entregado|pendiente"}}, sesion}
+
+  defp ejecutar(
+         {:report_pet, [tipo, especie, nombre, caracteristicas, color, tamano, zona, contacto]},
+         sesion
+       ) do
+    datos = %{
+      especie: especie,
+      nombre: nombre,
+      caracteristicas: caracteristicas,
+      color: color,
+      tamano: tamano,
+      zona: zona,
+      contacto: contacto
+    }
+
+    resultado =
+      case MascotaServer.reportar(tipo, datos) do
+        {:error, :tipo_invalido} -> {:error, :tipo_reporte_invalido}
+        otro -> otro
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:report_pet, _}, sesion),
+    do:
+      {{:error,
+        {:uso,
+         "report_pet lost|found especie nombre \"caracteristicas\" color tamano zona contacto"}},
+       sesion}
+
+  defp ejecutar({:list_pets, args}, sesion) do
+    resultado =
+      with {:ok, filtros} <- Parser.parsear_filtros(args) do
+        MascotaServer.listar(filtros)
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:match_pets, []}, sesion), do: {MascotaServer.buscar_coincidencias(), sesion}
+
+  defp ejecutar({:match_pets, _}, sesion), do: {{:error, {:uso, "match_pets"}}, sesion}
+
+  defp ejecutar({:confirm_match, [id_a, id_b]}, sesion) do
+    resultado =
+      with {:ok, [a, b]} <- MascotaServer.confirmar_coincidencia(id_a, id_b) do
+        {:ok, "Coincidencia confirmada: #{a.id} y #{b.id} quedan resueltos."}
+      end
+
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:confirm_match, _}, sesion),
+    do: {{:error, {:uso, "confirm_match id_perdida id_encontrada"}}, sesion}
+
   # Debe ir de última.
   defp ejecutar({comando, _args}, sesion),
     do: {{:error, {:comando_no_implementado, comando}}, sesion}
@@ -336,8 +536,36 @@ defmodule Emergencias.CLI.Dispatcher do
     end
   end
 
+    defp movimiento_albergue({:ok, albergue}, accion) do
+    datos = AlbergueServer.resumen_albergue(albergue)
+
+    {:ok,
+     "#{accion} en #{datos.codigo}. Ocupación: #{datos.ocupacion}/#{datos.capacidad} " <>
+       "(#{datos.cupos} cupos libres)."}
+  end
+
+  defp movimiento_albergue(error, _accion), do: error
+
+  defp leer_edad(texto) when texto in ["-", "?"], do: {:ok, nil}
+  defp leer_edad(texto), do: Parser.a_entero(texto)
+
+  defp sin_historial(persona), do: Map.delete(persona, :historial)
+
   defp cerrar(sesion) do
     UsuarioServer.disconnect(sesion.usuario)
     SesionSupervisor.cerrar_sesion(sesion.usuario)
+  end
+  
+  defp resumen_global do
+    @servidores_con_resumen
+    |> Enum.reduce(%{}, fn servidor, total -> Map.merge(total, resumen_de(servidor)) end)
+    |> Map.put(:sesiones_activas, SesionSupervisor.sesiones_activas())
+  end
+
+  # Si un servidor no está activo, su parte del resumen queda vacía.
+  defp resumen_de(servidor) do
+    servidor.resumen()
+  catch
+    :exit, _ -> %{}
   end
 end

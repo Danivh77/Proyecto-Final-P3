@@ -1,12 +1,10 @@
 defmodule Emergencias.Servidores.AlbergueServer do
 
-
   use GenServer
 
   alias Emergencias.Dominio.Albergue
   alias Emergencias.Persistencia
-  alias Emergencias.Servidores.FamiliaServer
-
+  alias Emergencias.Servidores.{FamiliaServer, InventarioServer, NecesidadServer}
 
   @doc "Inicia el proceso de un albergue (lo llama el `AlbergueSupervisor`)."
   def start_link(%Albergue{} = albergue) do
@@ -25,14 +23,15 @@ defmodule Emergencias.Servidores.AlbergueServer do
   """
   def consultar(codigo) do
     with {:ok, albergue} <- obtener(codigo) do
-      # PENDIENTE (Integrante 2)
+            recursos = Enum.map(InventarioServer.por_ubicacion(codigo), & &1.codigo)
+      necesidades = Enum.map(NecesidadServer.por_albergue(codigo), & &1.id)
+
       informacion =
         Map.merge(resumen_albergue(albergue), %{
           ocupantes: albergue.ocupantes |> MapSet.to_list() |> Enum.sort(),
-          recursos: albergue.recursos,
-          necesidades: albergue.necesidades
+          recursos: Enum.uniq(albergue.recursos ++ recursos),
+          necesidades: Enum.uniq(albergue.necesidades ++ necesidades)
         })
-
       {:ok, informacion}
     end
   end

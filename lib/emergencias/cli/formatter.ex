@@ -4,13 +4,75 @@ defmodule Emergencias.CLI.Formatter do
   """
 
   @doc "Texto a mostrar para un resultado."
-  def formatear({:ok, texto}) when is_binary(texto), do: texto
+  def formatear({:ok, {:resumen, datos}}), do: formatear_resumen(datos)
   def formatear({:ok, lista}) when is_list(lista), do: tabla(lista)
   def formatear({:ok, mapa}) when is_map(mapa), do: detalle(mapa)
   def formatear({:ok, valor}), do: valor_texto(valor)
   def formatear(:ok), do: "Listo."
   def formatear({:error, motivo}), do: "Error: " <> mensaje_error(motivo)
   def formatear(otro), do: inspect(otro)
+
+  @doc "Texto del comando summary a partir de los resúmenes de todos los servidores."
+  def formatear_resumen(d) do
+    [
+      "RESUMEN GLOBAL DEL SISTEMA",
+      seccion(d, :usuarios_registrados, "Usuarios", fn ->
+        "#{d.usuarios_registrados} registrados, #{d.usuarios_conectados} conectados" <>
+          sesiones(d[:sesiones_activas])
+      end),
+      seccion(d, :zonas, "Zonas", fn ->
+        "#{d.zonas} zonas, #{d.sectores} sectores, #{d.puntos} puntos de atención, " <>
+          "#{d.personas_afectadas} personas afectadas"
+      end),
+      seccion(d, :necesidades, "Necesidades", fn ->
+        "#{d.necesidades} en total (pendientes #{d.necesidades_pendientes}, " <>
+          "asignadas #{d.necesidades_asignadas}, en atención #{d.necesidades_en_atencion}, " <>
+          "atendidas #{d.necesidades_atendidas}, canceladas #{d.necesidades_canceladas})"
+      end),
+      seccion(d, :recursos, "Recursos", fn ->
+        "#{d.recursos} registrados, #{d.recursos_criticos} en nivel crítico"
+      end),
+      seccion(d, :albergues_registrados, "Albergues", fn ->
+        "#{d.albergues_registrados} registrados, ocupación " <>
+          "#{d.albergues_ocupacion_total}/#{d.albergues_capacidad_total}, " <>
+          "#{d.albergues_cupos_libres} cupos libres"
+      end),
+      seccion(d, :personas_registradas, "Personas", fn ->
+        "#{d.personas_registradas} registradas" <> personas_por_estado(d)
+      end),
+      seccion(d, :mensajes_total, "Mensajes", fn ->
+        "#{d.mensajes_total} en total (#{d.mensajes_pendientes} pendientes, " <>
+          "#{d.mensajes_entregados} entregados)"
+      end),
+      seccion(d, :mascotas_reportadas, "Mascotas", fn ->
+        "#{d.mascotas_reportadas} reportes (perdidas abiertas #{d.mascotas_perdidas_abiertas}, " <>
+          "encontradas abiertas #{d.mascotas_encontradas_abiertas}, " <>
+          "posibles coincidencias #{d.mascotas_posibles_coincidencias}, " <>
+          "resueltas #{d.mascotas_resueltas})"
+      end)
+    ]
+    |> Enum.join("\n")
+  end
+
+  defp seccion(datos, clave, titulo, texto) do
+    if Map.has_key?(datos, clave), do: "#{titulo}: #{texto.()}", else: "#{titulo}: no disponible"
+  end
+
+  defp sesiones([_ | _] = usuarios), do: " (#{Enum.join(usuarios, ", ")})"
+  defp sesiones(_), do: ""
+
+  defp personas_por_estado(datos) do
+    estados =
+      for {clave, cantidad} <- datos,
+          nombre = to_string(clave),
+          String.starts_with?(nombre, "personas_"),
+          clave not in [:personas_registradas, :personas_afectadas],
+          cantidad > 0 do
+        "#{String.replace_prefix(nombre, "personas_", "")} #{cantidad}"
+      end
+
+    if estados == [], do: "", else: " (" <> Enum.join(Enum.sort(estados), ", ") <> ")"
+  end
 
   @doc "Muestra una lista de mapas o structs como tabla."
   def tabla([]), do: "(sin resultados)"
@@ -101,6 +163,41 @@ defmodule Emergencias.CLI.Formatter do
   def mensaje_error(:unidad_invalida), do: "la unidad no puede estar vacía."
   def mensaje_error(:ubicacion_invalida), do: "la ubicación no puede estar vacía."
   def mensaje_error(:capacidad_llena), do: "el albergue no tiene cupos disponibles."
+  def mensaje_error(:albergue_no_encontrado), do: "no existe un albergue con ese código."
+  def mensaje_error(:albergue_ya_existe), do: "ya existe un albergue con ese código."
+  def mensaje_error(:capacidad_invalida), do: "la capacidad debe ser un número mayor que cero."
+  def mensaje_error(:datos_invalidos), do: "faltan datos o hay datos vacíos."
+  def mensaje_error(:documento_invalido), do: "el documento no puede estar vacío."
+  def mensaje_error(:ya_esta_dentro), do: "esa persona ya está en el albergue."
+  def mensaje_error(:no_esta_dentro), do: "esa persona no está en el albergue."
+  def mensaje_error(:ya_asociado), do: "ya estaba asociado al albergue."
+  def mensaje_error(:limite_invalido), do: "la cantidad debe ser un número mayor que cero."
+
+  def mensaje_error(:persona_no_encontrada),
+    do: "no hay una persona registrada con ese documento."
+
+  def mensaje_error(:persona_ya_registrada),
+    do: "ya hay una persona registrada con ese documento."
+
+  def mensaje_error(:edad_invalida),
+    do: "la edad debe ser un número mayor o igual a cero (o - si no se sabe)."
+
+  def mensaje_error(:estado_invalido), do: "estado no válido."
+  def mensaje_error(:mensaje_no_encontrado), do: "no existe un mensaje con ese id."
+  def mensaje_error(:remitente_invalido), do: "el remitente no puede estar vacío."
+
+  def mensaje_error(:destinatario_invalido),
+    do: "el documento del destinatario no puede estar vacío."
+
+  def mensaje_error(:contenido_invalido), do: "el mensaje no puede estar vacío."
+  def mensaje_error(:ya_entregado), do: "el mensaje ya estaba marcado como entregado."
+  def mensaje_error(:ya_pendiente), do: "el mensaje ya estaba pendiente."
+  def mensaje_error(:tipo_reporte_invalido), do: "el tipo de reporte debe ser lost o found."
+  def mensaje_error(:reporte_no_encontrado), do: "no existe un reporte con ese id."
+  def mensaje_error(:mismo_reporte), do: "debes indicar dos reportes distintos."
+  def mensaje_error(:tipos_incompatibles), do: "se necesita un reporte perdido y uno encontrado."
+  def mensaje_error(:especies_distintas), do: "los reportes son de especies distintas."
+  def mensaje_error(:filtros_invalidos), do: "filtros inválidos."
   def mensaje_error(:ya_resuelto), do: "el reporte ya fue resuelto."
   def mensaje_error(:contrasena_incorrecta), do: "contraseña incorrecta."
 
