@@ -1,5 +1,5 @@
-P001|1001234567|Andrés Gómez|34|zona_norte|en_albergue|
-P002|1002345678|María Rodríguez|28|zona_norte|en_albergue|
-P003|1003456789|Carlos Pérez|45|centro|reportada|
-P004|1004567890|Lucía Martínez|8|centro|sin_informacion|
-P005|1005678901|Juan Torres|62|zona_sur|localizada|
+P001|1001234567|Andrés Gómez|34|demo_norte|en_albergue|
+P002|1002345678|María Rodríguez|28|demo_norte|en_albergue|
+P003|1003456789|Carlos Pérez|45|zona_demo|reportada|
+P004|1004567890|Lucía Martínez|8|zona_demo|sin_informacion|
+P005|1005678901|Juan Torres|62|demo_sur|localizada|

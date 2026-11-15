@@ -1,1 +1,1 @@
-A01|Albergue Norte|zona_norte|150|1001234567,1002345678||
+A01|Albergue Norte|demo_norte|150|1001234567,1002345678||
