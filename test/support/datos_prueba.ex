@@ -65,13 +65,47 @@ defmodule Emergencias.DatosPrueba do
   end
 
   # INTEGRANTE 3: Albergues, familiares y mascotas
-  # Funciones acordadas: albergue_ejemplo/1, persona_ejemplo/1,
-  #                      mascota_perdida/0, mascota_encontrada/0
-  #
-  # Ejemplo (quitar los # y ajustar):
-  #
-  # def albergue_ejemplo(capacidad \\ 150) do
-  #   %{codigo: "A01", nombre: "Albergue Norte", zona: "zona_norte", capacidad: capacidad}
-  # end
+
+  @doc "Albergue de ejemplo."
+  def albergue_ejemplo(capacidad \\ 150) do
+    %{codigo: "A01", nombre: "Albergue Norte", zona: "zona_norte", capacidad: capacidad}
+  end
+
+  @doc "Persona afectada de ejemplo."
+  def persona_ejemplo do
+    %{
+      documento: "1001234567",
+      nombre: "Andrés Gómez",
+      edad: 34,
+      zona: "zona_norte",
+      estado: "localizada"
+    }
+  end
+
+  @doc "Reporte de mascota perdida de ejemplo."
+  def mascota_perdida do
+    %{
+      especie: "perro",
+      nombre: "Max",
+      caracteristicas: "collar rojo",
+      color: "cafe",
+      tamano: "mediano",
+      zona: "zona_norte",
+      contacto: "3001234567"
+    }
+  end
+
+  @doc "Reporte de mascota encontrada de ejemplo (coincide con `mascota_perdida/0`)."
+  def mascota_encontrada do
+    %{
+      especie: "perro",
+      nombre: "desconocido",
+      caracteristicas: "collar rojo",
+      color: "cafe",
+      tamano: "mediano",
+      zona: "zona_norte",
+      contacto: "3109876543"
+    }
+  end
 
 end
