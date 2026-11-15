@@ -1,0 +1,3 @@
+M001|perdida|perro|Luna|collar rojo y orejas caídas|negra|mediana|zona_norte|3001112233|activa|
+M002|perdida|gato|Michi|manchas blancas en las patas|gris|pequeña|centro|3004445566|activa|
+M003|encontrada|gato|desconocido|collar azul|negro|pequeña|zona_sur|3007778899|activa|
