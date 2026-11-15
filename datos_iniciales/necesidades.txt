@@ -1,0 +1,3 @@
+N001|agua|Agua potable para el puesto de atención|30|demo_p01|critica|sistema|pendiente|||
+N002|agua|Agua potable para las familias del sector sur|25|demo_sur|alta|sistema|pendiente|||
+N003|alimentos|Arroz para el comedor comunitario|15|demo_norte|media|sistema|pendiente|||
