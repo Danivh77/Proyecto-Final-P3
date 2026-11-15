@@ -4,7 +4,7 @@ defmodule Emergencias.CLI.Dispatcher do
   Cada integrante escribe solo en su bloque.
   """
 
-  alias Emergencias.CLI.{Parser, Permisos}
+  alias Emergencias.CLI.{Formatter, Parser, Permisos}
 
   alias Emergencias.Servidores.{
     ActividadLogger,
@@ -122,7 +122,14 @@ defmodule Emergencias.CLI.Dispatcher do
     {registrar_nodo(args, &ZonaServer.registrar_punto/5, uso), sesion}
   end
 
-  defp ejecutar({:zone_status, [codigo]}, sesion), do: {ZonaServer.estado_zona(codigo), sesion}
+  defp ejecutar({:zone_status, [codigo]}, sesion) do
+    resultado =
+      with {:ok, estado} <- ZonaServer.estado_zona(codigo) do
+        {:ok, Formatter.estado_zona(estado)}
+      end
+
+    {resultado, sesion}
+  end
 
   defp ejecutar({:zone_status, _}, sesion),
     do: {{:error, {:uso, "zone_status codigo"}}, sesion}

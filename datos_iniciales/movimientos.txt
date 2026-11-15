@@ -1,0 +1,4 @@
+2026-11-14 09:15:00|salida|R001|10|demo_p01|sistema
+2026-11-14 09:10:00|entrada|R003|8|demo_sur|sistema
+2026-11-14 09:05:00|entrada|R002|40|demo_norte|sistema
+2026-11-14 09:00:00|entrada|R001|60|demo_p01|sistema

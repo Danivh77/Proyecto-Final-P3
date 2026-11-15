@@ -37,6 +37,27 @@ defmodule Emergencias.CLI.Formatter do
     |> Enum.map_join("\n", fn {clave, valor} -> "#{clave}: #{valor_texto(valor)}" end)
   end
 
+  @doc "Muestra el estado de una zona con tablas de inventario y solicitudes pendientes."
+  def estado_zona(estado) do
+    {recursos, estado} = Map.pop!(estado, :recursos)
+    {pendientes, datos} = Map.pop!(estado, :necesidades_pendientes)
+
+    solicitudes =
+      Enum.map(
+        pendientes,
+        &Map.take(&1, [:id, :tipo, :cantidad, :prioridad, :zona, :descripcion])
+      )
+
+    Enum.join(
+      [
+        detalle(datos),
+        "Recursos\n" <> tabla(recursos),
+        "Necesidades pendientes\n" <> tabla(solicitudes)
+      ],
+      "\n\n"
+    )
+  end
+
   @doc "Mensaje en español para cada motivo de error."
   def mensaje_error(:no_conectado), do: "primero debes conectarte (connect usuario contraseña)."
   def mensaje_error(:sin_permiso), do: "tu tipo de usuario no puede hacer esta acción."
