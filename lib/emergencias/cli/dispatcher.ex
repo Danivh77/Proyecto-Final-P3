@@ -5,7 +5,14 @@ defmodule Emergencias.CLI.Dispatcher do
   """
 
   alias Emergencias.CLI.{Parser, Permisos}
-  alias Emergencias.Servidores.{ActividadLogger, Sesion, SesionSupervisor, UsuarioServer}
+
+  alias Emergencias.Servidores.{
+    ActividadLogger,
+    Sesion,
+    SesionSupervisor,
+    UsuarioServer,
+    ZonaServer
+  }
 
   @comandos_publicos [:connect, :help, :exit]
 
@@ -90,15 +97,57 @@ defmodule Emergencias.CLI.Dispatcher do
 
   # ============================== INTEGRANTE 2 ===============================
 
+  defp ejecutar({:register_zone, [codigo, nombre, nivel | resto]}, sesion)
+       when length(resto) <= 1 do
+    resultado =
+      with {:ok, cantidad} <- Parser.a_entero(List.first(resto, "0")) do
+        ZonaServer.registrar_zona(codigo, nombre, nivel, cantidad) |> zona_registrada()
+      end
 
+    {resultado, sesion}
+  end
+
+  defp ejecutar({:register_zone, _}, sesion),
+    do: {{:error, {:uso, "register_zone codigo nombre nivel [personas_afectadas]"}}, sesion}
+
+  defp ejecutar({:register_sector, args}, sesion) do
+    uso = "register_sector codigo_zona codigo_sector nombre [nivel] [personas_afectadas]"
+    {registrar_nodo(args, &ZonaServer.registrar_sector/5, uso), sesion}
+  end
+
+  defp ejecutar({:register_point, args}, sesion) do
+    uso = "register_point codigo_sector codigo_punto nombre [nivel] [personas_afectadas]"
+    {registrar_nodo(args, &ZonaServer.registrar_punto/5, uso), sesion}
+  end
+
+  defp ejecutar({:zone_status, [codigo]}, sesion), do: {ZonaServer.estado_zona(codigo), sesion}
+
+  defp ejecutar({:zone_status, _}, sesion),
+    do: {{:error, {:uso, "zone_status codigo"}}, sesion}
+
+  defp ejecutar({:zone_stats, [codigo]}, sesion), do: {ZonaServer.estadisticas(codigo), sesion}
+
+  defp ejecutar({:zone_stats, _}, sesion),
+    do: {{:error, {:uso, "zone_stats codigo"}}, sesion}
 
   # ============================== INTEGRANTE 3 ===============================
-
-
 
   # Debe ir de última.
   defp ejecutar({comando, _args}, sesion),
     do: {{:error, {:comando_no_implementado, comando}}, sesion}
+
+  defp registrar_nodo([padre, codigo, nombre | resto], registrar, _uso) when length(resto) <= 2 do
+    nivel = List.first(resto)
+
+    with {:ok, cantidad} <- Parser.a_entero(Enum.at(resto, 1, "0")) do
+      registrar.(padre, codigo, nombre, nivel, cantidad) |> zona_registrada()
+    end
+  end
+
+  defp registrar_nodo(_args, _registrar, uso), do: {:error, {:uso, uso}}
+
+  defp zona_registrada({:ok, nodo}), do: {:ok, "Registrado: #{nodo.nombre} (#{nodo.codigo})."}
+  defp zona_registrada(error), do: error
 
   defp cerrar(sesion) do
     UsuarioServer.disconnect(sesion.usuario)

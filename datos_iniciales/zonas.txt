@@ -1,0 +1,1 @@
+zona_demo|Zona de ejemplo|zona|alto|100|2|demo_norte|Sector Norte|sector|medio|30|0|demo_sur|Sector Sur|sector|medio|20|1|demo_p01|Puesto de atención|punto|bajo|5|0

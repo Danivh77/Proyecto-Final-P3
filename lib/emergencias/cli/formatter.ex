@@ -45,12 +45,25 @@ defmodule Emergencias.CLI.Formatter do
   def mensaje_error(:no_implementado), do: "este comando todavía no está implementado."
   def mensaje_error(:no_encontrado), do: "no se encontró el registro."
   def mensaje_error(:id_duplicado), do: "ya existe un registro con ese identificador."
+  def mensaje_error(:codigo_invalido), do: "el código no puede estar vacío."
+  def mensaje_error(:nombre_invalido), do: "el nombre no puede estar vacío."
+  def mensaje_error(:nivel_invalido), do: "el nivel debe ser crítico, alto, medio o bajo."
+
+  def mensaje_error(:personas_afectadas_invalidas),
+    do: "la cantidad de personas afectadas debe ser un entero mayor o igual a cero."
+
+  def mensaje_error(:jerarquia_invalida),
+    do: "los sectores pertenecen a una zona y los puntos a un sector."
+
   def mensaje_error(:transicion_invalida), do: "ese cambio de estado no está permitido."
   def mensaje_error(:inventario_insuficiente), do: "no hay suficiente inventario."
   def mensaje_error(:capacidad_llena), do: "el albergue no tiene cupos disponibles."
   def mensaje_error(:ya_resuelto), do: "el reporte ya fue resuelto."
   def mensaje_error(:contrasena_incorrecta), do: "contraseña incorrecta."
-  def mensaje_error(:tipo_invalido), do: "tipo de usuario inválido (ciudadano, voluntario, coordinador o administrador)."
+
+  def mensaje_error(:tipo_invalido),
+    do: "tipo de usuario inválido (ciudadano, voluntario, coordinador o administrador)."
+
   def mensaje_error(:usuario_invalido), do: "el usuario debe tener de 3 a 20 letras, números o _."
   def mensaje_error(:contrasena_invalida), do: "la contraseña debe tener al menos 4 caracteres."
   def mensaje_error(:zona_invalida), do: "la zona no puede estar vacía."
