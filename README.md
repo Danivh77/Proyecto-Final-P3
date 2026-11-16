@@ -5,10 +5,35 @@ Sistema de consola en Elixir para coordinar la atención después de un terremot
 ## Instalación y ejecución
 
 Instala Elixir 1.20 con Erlang/OTP. El proyecto no tiene dependencias externas.
-Abre una terminal en la carpeta del repositorio y ejecuta lo siguiente.
+Abre PowerShell en la carpeta del repositorio.
 
-```sh
-mix run -e "Emergencias.iniciar()"
+### Abrir la consola del sistema
+
+```powershell
+mix iniciar
+```
+
+Usa esta opción para demostrar los comandos del sistema. Al escribir `exit`,
+vuelves a PowerShell.
+
+### Abrir IEx para inspeccionar la supervisión
+
+```powershell
+iex.bat -S mix
+```
+
+En IEx, puedes ver el árbol de supervisión y luego abrir la consola del sistema.
+
+```elixir
+Supervisor.which_children(Emergencias.Supervisor)
+Emergencias.iniciar()
+```
+
+Al escribir `exit` en la consola del sistema, vuelves a IEx. Allí puedes contar
+los procesos de albergues con este comando.
+
+```elixir
+DynamicSupervisor.count_children(Emergencias.Servidores.AlbergueSupervisor)
 ```
 
 ## Comandos básicos
@@ -25,7 +50,7 @@ list_family_messages 1001234567
 match_pets
 ```
 
-Usa `help` para ver los demás comandos y `exit` para salir.
+Usa `help` para ver los demás comandos.
 
 ## Roles y permisos
 
