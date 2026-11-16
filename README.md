@@ -22,6 +22,8 @@ vuelves a PowerShell.
 iex.bat -S mix
 ```
 
+En macOS o Linux se usa `iex -S mix`.
+
 En IEx, puedes ver el árbol de supervisión y luego abrir la consola del sistema.
 
 ```elixir
@@ -36,21 +38,41 @@ los procesos de albergues con este comando.
 DynamicSupervisor.count_children(Emergencias.Servidores.AlbergueSupervisor)
 ```
 
+## Usuarios de ejemplo
+
+Todos tienen la contraseña `1234`.
+
+| Usuario | Tipo |
+| --- | --- |
+| `ciudadano` | Ciudadano |
+| `voluntario` | Voluntario |
+| `coordinador` | Coordinador |
+| `admin` | Administrador |
+
+Si te conectas con un usuario que no existe, se registra automáticamente:
+
+```text
+connect usuario contraseña tipo zona "Nombre completo"
+```
+
 ## Comandos básicos
 
 Prueba estos comandos con los datos de ejemplo.
 
 ```text
-connect demo_readme clave_demo coordinador demo_norte
+connect coordinador 1234
 zone_status demo_norte
 list_needs zona=demo_norte
 list_resources zona=demo_norte
 check_shelter A01
 list_family_messages 1001234567
+report_pet found perro desconocido "collar rojo y orejas caídas" negra mediana demo_norte 3005556677
 match_pets
 ```
 
-Usa `help` para ver los demás comandos.
+El reporte de la mascota encontrada coincide con la perra Luna de los datos de
+ejemplo, así que `match_pets` muestra esa coincidencia. Usa `help` para ver los
+demás comandos.
 
 ## Roles y permisos
 
@@ -67,6 +89,12 @@ Cada rol hereda los permisos del anterior.
 - `test/` contiene las pruebas.
 - `datos_iniciales/` contiene los datos de ejemplo.
 - `data/` guarda los datos de trabajo y se inicializa con los datos de ejemplo.
+
+Para volver a los datos de ejemplo, borra el contenido de `data/` excepto `.gitkeep`:
+
+```powershell
+Get-ChildItem data -Exclude .gitkeep | Remove-Item -Recurse -Force
+```
 
 ## Concurrencia y coincidencias
 
