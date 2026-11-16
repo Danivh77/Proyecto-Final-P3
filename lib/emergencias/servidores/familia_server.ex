@@ -13,7 +13,6 @@ defmodule Emergencias.Servidores.FamiliaServer do
   @archivo_personas "personas.txt"
   @archivo_mensajes "mensajes.txt"
 
-
   def start_link(_opts \\ []) do
     GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
   end
@@ -68,7 +67,6 @@ defmodule Emergencias.Servidores.FamiliaServer do
 
   @doc "Totales para el comando summary."
   def resumen, do: GenServer.call(__MODULE__, :resumen)
-
 
   @impl true
   def init(:ok) do
@@ -173,7 +171,6 @@ defmodule Emergencias.Servidores.FamiliaServer do
 
     {:reply, resumen, datos}
   end
-
 
   defp ahora, do: Fechas.formatear(Fechas.ahora())
 

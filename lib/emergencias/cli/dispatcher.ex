@@ -1,7 +1,6 @@
 defmodule Emergencias.CLI.Dispatcher do
   @moduledoc """
   Envía cada comando al servidor que corresponde y devuelve `{resultado, sesion}`.
-  Cada integrante escribe solo en su bloque.
   """
 
   alias Emergencias.CLI.{Formatter, Parser, Permisos}
@@ -52,11 +51,12 @@ defmodule Emergencias.CLI.Dispatcher do
     end
   end
 
-  defp ejecutar({:connect, [usuario, contrasena | resto]}, nil) when length(resto) <= 2 do
+  defp ejecutar({:connect, [usuario, contrasena | resto]}, nil) when length(resto) <= 3 do
     tipo = Enum.at(resto, 0, "ciudadano")
     zona = Enum.at(resto, 1, "sin_zona")
+    nombre = Enum.at(resto, 2, "")
 
-    case UsuarioServer.connect(usuario, contrasena, tipo, zona) do
+    case UsuarioServer.connect(usuario, contrasena, tipo, zona, nombre) do
       {:ok, u, accion} ->
         nueva_sesion = %{usuario: u.username, tipo: u.tipo, zona: u.zona}
         SesionSupervisor.iniciar_sesion(nueva_sesion)
@@ -72,11 +72,11 @@ defmodule Emergencias.CLI.Dispatcher do
     end
   end
 
-  defp ejecutar({:connect, [_, _ | resto]}, sesion) when sesion != nil and length(resto) <= 2,
+  defp ejecutar({:connect, [_, _ | resto]}, sesion) when sesion != nil and length(resto) <= 3,
     do: {{:error, :sesion_activa}, sesion}
 
   defp ejecutar({:connect, _}, sesion),
-    do: {{:error, {:uso, "connect usuario contraseña [tipo] [zona]"}}, sesion}
+    do: {{:error, {:uso, "connect usuario contraseña [tipo] [zona] [\"nombre completo\"]"}}, sesion}
 
   defp ejecutar({:disconnect, []}, sesion) do
     cerrar(sesion)
@@ -111,8 +111,6 @@ defmodule Emergencias.CLI.Dispatcher do
     cerrar(sesion)
     {:salir, nil}
   end
-
-  # ============================== INTEGRANTE 2 ===============================
 
   defp ejecutar({:register_zone, [codigo, nombre, nivel | resto]}, sesion)
        when length(resto) <= 1 do
@@ -317,8 +315,6 @@ defmodule Emergencias.CLI.Dispatcher do
   defp ejecutar({:pending_needs, _}, sesion),
     do: {{:error, {:uso, "pending_needs"}}, sesion}
 
-  # ============================== INTEGRANTE 3 ===============================
-
   defp ejecutar({:register_shelter, [codigo, nombre, zona, capacidad]}, sesion) do
     resultado =
       with {:ok, numero} <- Parser.a_entero(capacidad),
@@ -504,7 +500,6 @@ defmodule Emergencias.CLI.Dispatcher do
   defp ejecutar({:confirm_match, _}, sesion),
     do: {{:error, {:uso, "confirm_match id_perdida id_encontrada"}}, sesion}
 
-  # Debe ir de última.
   defp ejecutar({comando, _args}, sesion),
     do: {{:error, {:comando_no_implementado, comando}}, sesion}
 
@@ -555,7 +550,7 @@ defmodule Emergencias.CLI.Dispatcher do
     UsuarioServer.disconnect(sesion.usuario)
     SesionSupervisor.cerrar_sesion(sesion.usuario)
   end
-  
+
   defp resumen_global do
     @servidores_con_resumen
     |> Enum.reduce(%{}, fn servidor, total -> Map.merge(total, resumen_de(servidor)) end)

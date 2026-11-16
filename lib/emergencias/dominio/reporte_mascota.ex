@@ -39,7 +39,6 @@ defmodule Emergencias.Dominio.ReporteMascota do
 
   @estados [:activa, :posible_coincidencia, :resuelta]
 
-
   @doc "Convierte `lost/perdida` y `found/encontrada` (o el átomo) en un tipo válido."
   @spec tipo_desde_texto(term()) :: {:ok, tipo()} | {:error, :tipo_invalido}
   def tipo_desde_texto(tipo) when tipo in [:perdida, :encontrada], do: {:ok, tipo}
@@ -168,7 +167,6 @@ defmodule Emergencias.Dominio.ReporteMascota do
 
   defp normalizar_texto(valor) when is_binary(valor), do: normalizar(valor)
   defp normalizar_texto(_), do: nil
-
 
   @doc "Convierte el reporte a una línea de texto."
   @spec a_linea(t()) :: String.t()

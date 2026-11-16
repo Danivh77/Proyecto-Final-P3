@@ -198,7 +198,7 @@ defmodule Emergencias.CLI.Formatter do
   def mensaje_error(:tipos_incompatibles), do: "se necesita un reporte perdido y uno encontrado."
   def mensaje_error(:especies_distintas), do: "los reportes son de especies distintas."
   def mensaje_error(:filtros_invalidos), do: "filtros inválidos."
-  def mensaje_error(:ya_resuelto), do: "el reporte ya fue resuelto."
+  def mensaje_error(:ya_resuelto), do: "ya fue resuelto y no se puede volver a modificar."
   def mensaje_error(:contrasena_incorrecta), do: "contraseña incorrecta."
 
   def mensaje_error(:tipo_invalido),

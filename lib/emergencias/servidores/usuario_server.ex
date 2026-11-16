@@ -21,8 +21,8 @@ defmodule Emergencias.Servidores.UsuarioServer do
   Conecta al usuario. Si no existe lo registra; si existe valida la contraseña.
   Devuelve `{:ok, usuario, :registrado | :autenticado}` o `{:error, motivo}`.
   """
-  def connect(username, password, tipo, zona) do
-    GenServer.call(__MODULE__, {:connect, username, password, tipo, zona})
+  def connect(username, password, tipo, zona, nombre \\ "") do
+    GenServer.call(__MODULE__, {:connect, username, password, tipo, zona, nombre})
   end
 
   @doc "Desconecta al usuario."
@@ -50,7 +50,7 @@ defmodule Emergencias.Servidores.UsuarioServer do
   end
 
   @impl true
-  def handle_call({:connect, username, password, tipo, zona}, _from, estado) do
+  def handle_call({:connect, username, password, tipo, zona, nombre}, _from, estado) do
     cond do
       MapSet.member?(estado.conectados, username) ->
         {:reply, {:error, :ya_conectado}, estado}
@@ -59,7 +59,7 @@ defmodule Emergencias.Servidores.UsuarioServer do
         autenticar(estado.usuarios[username], password, estado)
 
       true ->
-        registrar(username, password, tipo, zona, estado)
+        registrar(username, password, tipo, zona, nombre, estado)
     end
   end
 
@@ -102,8 +102,8 @@ defmodule Emergencias.Servidores.UsuarioServer do
     end
   end
 
-  defp registrar(username, password, tipo, zona, estado) do
-    with {:ok, usuario} <- Usuario.nuevo(username, password, "", tipo, zona),
+  defp registrar(username, password, tipo, zona, nombre, estado) do
+    with {:ok, usuario} <- Usuario.nuevo(username, password, nombre, tipo, zona),
          usuarios = Map.put(estado.usuarios, username, usuario),
          :ok <- Persistencia.guardar(@archivo, Map.values(usuarios), &Usuario.a_linea/1) do
       {:reply, {:ok, usuario, :registrado}, conectar(%{estado | usuarios: usuarios}, usuario)}
