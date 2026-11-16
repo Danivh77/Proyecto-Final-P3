@@ -1,7 +1,7 @@
 defmodule Emergencias.Servidores.ZonaServerTest do
   use ExUnit.Case, async: false
 
-  alias Emergencias.Servidores.{InventarioServer, NecesidadServer, ZonaServer}
+  alias Emergencias.Servidores.{AlbergueSupervisor, InventarioServer, NecesidadServer, ZonaServer}
 
   test "el estado incluye recursos y pendientes del árbol consultado" do
     sufijo = Base.encode16(:crypto.strong_rand_bytes(6))
@@ -17,6 +17,11 @@ defmodule Emergencias.Servidores.ZonaServerTest do
     assert {:ok, _} = ZonaServer.registrar_sector(zona, sector, "Sector")
     assert {:ok, _} = ZonaServer.registrar_punto(sector, punto, "Punto")
     assert {:ok, _} = ZonaServer.registrar_zona(externa, "Otra zona", "medio")
+
+    assert {:ok, interno} =
+             AlbergueSupervisor.crear_albergue("AI_" <> sufijo, "Interno", punto, 20)
+
+    assert {:ok, _} = AlbergueSupervisor.crear_albergue("AE_" <> sufijo, "Externo", externa, 20)
 
     assert {:ok, recurso_raiz} =
              InventarioServer.registrar_recurso(
@@ -63,6 +68,7 @@ defmodule Emergencias.Servidores.ZonaServerTest do
     assert {:ok, estado} = ZonaServer.estado_zona(zona)
     assert estado.sectores == 1
     assert estado.puntos == 1
+    assert estado.albergues == [interno.codigo]
     assert MapSet.new(estado.recursos) == MapSet.new([recurso_raiz, recurso_punto])
     assert estado.necesidades_pendientes == [pendiente_punto, pendiente_raiz]
 

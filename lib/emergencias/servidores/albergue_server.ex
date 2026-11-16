@@ -23,8 +23,8 @@ defmodule Emergencias.Servidores.AlbergueServer do
   """
   def consultar(codigo) do
     with {:ok, albergue} <- obtener(codigo) do
-            recursos = Enum.map(InventarioServer.por_ubicacion(codigo), & &1.codigo)
-      necesidades = Enum.map(NecesidadServer.por_albergue(codigo), & &1.id)
+      recursos = Enum.map(InventarioServer.por_ubicacion(albergue.codigo), & &1.codigo)
+      necesidades = Enum.map(NecesidadServer.por_albergue(albergue.codigo), & &1.id)
 
       informacion =
         Map.merge(resumen_albergue(albergue), %{

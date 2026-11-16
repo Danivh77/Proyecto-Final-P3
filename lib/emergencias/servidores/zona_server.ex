@@ -7,7 +7,7 @@ defmodule Emergencias.Servidores.ZonaServer do
 
   alias Emergencias.Dominio.Zona
   alias Emergencias.Persistencia
-  alias Emergencias.Servidores.{InventarioServer, NecesidadServer}
+  alias Emergencias.Servidores.{AlbergueSupervisor, InventarioServer, NecesidadServer}
 
   @archivo "zonas.txt"
 
@@ -39,9 +39,10 @@ defmodule Emergencias.Servidores.ZonaServer do
   @doc "Lista las zonas raíz con sus respectivos sectores y puntos."
   def listar, do: GenServer.call(__MODULE__, :listar)
 
-  @doc "Consulta los datos, recursos y necesidades pendientes del nodo y su árbol."
+  @doc "Consulta el nodo y los recursos, necesidades pendientes y albergues de su árbol."
   def estado_zona(codigo) do
-    with {:ok, nodo} <- obtener(codigo) do
+    with {:ok, nodo} <- obtener(codigo),
+         {:ok, albergues} <- AlbergueSupervisor.listar() do
       codigos = MapSet.new(Zona.listar_codigos(nodo))
 
       pendientes =
@@ -55,7 +56,9 @@ defmodule Emergencias.Servidores.ZonaServer do
         nivel: nodo.nivel,
         hijos: Enum.map(nodo.hijos, & &1.codigo),
         recursos: InventarioServer.listar(zona: nodo.codigo),
-        necesidades_pendientes: pendientes
+        necesidades_pendientes: pendientes,
+        albergues:
+          for(albergue <- albergues, MapSet.member?(codigos, albergue.zona), do: albergue.codigo)
       }
 
       {:ok, Map.merge(datos, Zona.estadisticas(nodo))}
