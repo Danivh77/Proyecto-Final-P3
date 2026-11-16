@@ -4,6 +4,7 @@ defmodule Emergencias.Dominio.Necesidad do
   Las operaciones devuelven nuevas estructuras y trabajan en memoria.
   """
 
+  alias Emergencias.Dominio.Albergue
   alias Emergencias.Persistencia
 
   @tipos ~w(agua alimentos medicamentos primeros_auxilios refugio transporte rescate otra)
@@ -113,9 +114,18 @@ defmodule Emergencias.Dominio.Necesidad do
   def filtrar(necesidades, filtros) do
     Enum.filter(necesidades, fn necesidad ->
       Enum.all?(filtros, fn
-        {:prioridad, valor} -> necesidad.prioridad == prioridad_canonica(valor)
-        {campo, valor} when campo in @filtros -> Map.fetch!(necesidad, campo) == valor
-        _ -> false
+        {:prioridad, valor} ->
+          necesidad.prioridad == prioridad_canonica(valor)
+
+        {:albergue, valor} when is_binary(valor) and is_binary(necesidad.albergue) ->
+          Albergue.normalizar_codigo(necesidad.albergue) ==
+            Albergue.normalizar_codigo(valor)
+
+        {campo, valor} when campo in @filtros ->
+          Map.fetch!(necesidad, campo) == valor
+
+        _ ->
+          false
       end)
     end)
   end

@@ -3,9 +3,9 @@ defmodule Emergencias.Servidores.NecesidadServer do
 
   use GenServer
 
-  alias Emergencias.Dominio.{Necesidad, Recurso}
+  alias Emergencias.Dominio.{Albergue, Necesidad, Recurso}
   alias Emergencias.Persistencia
-  alias Emergencias.Servidores.{InventarioServer, ZonaServer}
+  alias Emergencias.Servidores.{AlbergueServer, InventarioServer, ZonaServer}
   alias Emergencias.Util.Ids
 
   @archivo "necesidades.txt"
@@ -64,8 +64,8 @@ defmodule Emergencias.Servidores.NecesidadServer do
     with {:ok, necesidad} <-
            Necesidad.nuevo(id, tipo, descripcion, cantidad, zona, prioridad, responsable),
          :ok <- validar_zona(zona),
-         :ok <- validar_albergue(albergue) do
-      responder_guardado(datos, {:ok, %{necesidad | albergue: albergue}})
+         {:ok, codigo_albergue} <- validar_albergue(albergue) do
+      responder_guardado(datos, {:ok, %{necesidad | albergue: codigo_albergue}})
     else
       error -> {:reply, error, datos}
     end
@@ -238,13 +238,17 @@ defmodule Emergencias.Servidores.NecesidadServer do
     if ZonaServer.existe?(zona), do: :ok, else: {:error, :zona_no_encontrada}
   end
 
-  defp validar_albergue(nil), do: :ok
+  defp validar_albergue(nil), do: {:ok, nil}
 
-  defp validar_albergue(codigo) when is_binary(codigo) do
-    if String.trim(codigo) == "", do: {:error, :albergue_invalido}, else: :ok
+  defp validar_albergue(codigo) do
+    case Albergue.normalizar_codigo(codigo) do
+      invalido when invalido in [nil, ""] ->
+        {:error, :albergue_invalido}
+
+      normalizado ->
+        with {:ok, _} <- AlbergueServer.obtener(normalizado), do: {:ok, normalizado}
+    end
   end
-
-  defp validar_albergue(_), do: {:error, :albergue_invalido}
 
   defp buscar(datos, id) do
     case Map.fetch(datos, id) do
