@@ -1,12 +1,9 @@
 defmodule Emergencias.DatosPrueba do
   @moduledoc """
   Datos de ejemplo reutilizables en las pruebas (ExUnit).
-
-  ARCHIVO COMPARTIDO: cada integrante escribe SOLO dentro de su bloque.
-
   """
 
-  # INTEGRANTE 1: Núcleo y usuarios
+  # Usuarios
 
   @carpeta_pruebas "data_test"
 
@@ -33,7 +30,7 @@ defmodule Emergencias.DatosPrueba do
     :ok
   end
 
-  # INTEGRANTE 2: Zonas, necesidades y recursos
+  # Zonas, necesidades y recursos
 
   alias Emergencias.Dominio.{Necesidad, Recurso, Zona}
 
@@ -64,7 +61,7 @@ defmodule Emergencias.DatosPrueba do
     necesidad
   end
 
-  # INTEGRANTE 3: Albergues, familiares y mascotas
+  # Albergues, familiares y mascotas
 
   @doc "Albergue de ejemplo."
   def albergue_ejemplo(capacidad \\ 150) do

@@ -10,7 +10,6 @@ defmodule Emergencias.Servidores.AlbergueSupervisor do
   alias Emergencias.Persistencia
   alias Emergencias.Servidores.AlbergueServer
 
-
   def start_link(_opts \\ []) do
     with {:ok, pid} <- DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__) do
       cargar_existentes()
@@ -20,7 +19,6 @@ defmodule Emergencias.Servidores.AlbergueSupervisor do
 
   @impl true
   def init(:ok), do: DynamicSupervisor.init(strategy: :one_for_one)
-
 
   @doc """
   Crea un albergue y su proceso.
@@ -48,7 +46,6 @@ defmodule Emergencias.Servidores.AlbergueSupervisor do
 
     {:ok, iniciados}
   end
-
 
   @doc "Todos los albergues como mapas (código, nombre, zona, capacidad, ocupación, cupos, %)."
   def listar do
@@ -100,7 +97,6 @@ defmodule Emergencias.Servidores.AlbergueSupervisor do
     }
   end
 
- 
   defp verificar_codigo_libre(codigo) do
     en_ejecucion = Registry.lookup(Emergencias.Registry, {:albergue, codigo}) != []
     con_archivo = File.exists?(Persistencia.ruta("albergues/#{codigo}.txt"))

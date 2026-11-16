@@ -11,7 +11,6 @@ defmodule Emergencias.Application do
   def start(_type, _args) do
     Persistencia.cargar_datos_iniciales()
 
-    # Cada una quita el # de su línea cuando su módulo exista.
     children = [
       {Registry, keys: :unique, name: Emergencias.Registry},
       Emergencias.Servidores.ActividadLogger,

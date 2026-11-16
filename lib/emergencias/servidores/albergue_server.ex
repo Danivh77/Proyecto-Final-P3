@@ -1,5 +1,4 @@
 defmodule Emergencias.Servidores.AlbergueServer do
-
   use GenServer
 
   alias Emergencias.Dominio.Albergue
@@ -32,6 +31,7 @@ defmodule Emergencias.Servidores.AlbergueServer do
           recursos: Enum.uniq(albergue.recursos ++ recursos),
           necesidades: Enum.uniq(albergue.necesidades ++ necesidades)
         })
+
       {:ok, informacion}
     end
   end
@@ -66,7 +66,6 @@ defmodule Emergencias.Servidores.AlbergueServer do
     }
   end
 
-
   # Si ya existe el archivo del albergue (arranque o reinicio tras un fallo) se carga el
   # último estado guardado; si no, se guarda el albergue recién creado.
   @impl true
@@ -92,7 +91,6 @@ defmodule Emergencias.Servidores.AlbergueServer do
   def handle_call(:obtener, _from, albergue), do: {:reply, {:ok, albergue}, albergue}
 
   def handle_call({:entrada, documento}, _from, albergue) do
-
     with {:ok, nuevo} <- Albergue.ingresar(albergue, documento),
          :ok <- pasar_a_en_albergue(String.trim(documento)),
          :ok <- guardar(nuevo) do
@@ -118,7 +116,6 @@ defmodule Emergencias.Servidores.AlbergueServer do
   def handle_call({:asociar_necesidad, id_necesidad}, _from, albergue) do
     con_guardado(albergue, Albergue.asociar_necesidad(albergue, id_necesidad))
   end
-
 
   # Responde al cliente. Si el resultado es un nuevo albergue lo guarda antes de
   # adoptarlo; si algo falla, el estado no cambia.
