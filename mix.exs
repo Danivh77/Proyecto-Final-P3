@@ -9,7 +9,8 @@ defmodule Emergencias.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       test_ignore_filters: [~r/^test\/support\//],
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      aliases: [iniciar: "run -e Emergencias.iniciar()"]
     ]
   end
 
